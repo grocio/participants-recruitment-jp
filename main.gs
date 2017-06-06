@@ -76,7 +76,8 @@ function updateCalendar(e){
           hizuke + "からの心理学実験の予約が完了しましたのでメールいたします。\n" +
           "場所は" + experimentRoom + "です。当日は直接お越しください。\n" +
           "ご不明な点などありましたら、" + experimenterMailAddress +"までご連絡ください。\n" +
-          "当日もよろしくお願いいたします。\n\n実験責任者 " + experimenterName + "（当日は他の者が実験担当いたします）\n" +
+          "当日もよろしくお願いいたします。\n\n実験責任者 " + experimenterName +
+          "（当日は他の者が実験担当する可能性があります）\n" +
           "当日の連絡は" + experimenterPhone + "までお願いいたします。";
 
       //参加者にメールを送る

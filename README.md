@@ -97,7 +97,7 @@ var text = ParticipantName + "様\n\nこの度は心理学実験への応募あ�
           "場所は" + grocio.experimentRoom + "です。当日は直接お越しください。\n" +
           "ご不明な点などありましたら、" + grocio.experimenterMailAddress +"までご連絡ください。\n" +
           "当日もよろしくお願いいたします。\n\n実験責任者 " + grocio.experimenterName +
-          "（当日は他の者が実験担当する可能性があります）\n” +
+          "（当日は他の者が実験担当する可能性があります）\n" +
           "当日の連絡は" + grocio.experimenterPhone + "までお願いいたします。";
 ```
 としています。メールの本文はこのような感じになっていますが、変えたい方は上記の内容を変更して下さい。なお、\nは改行を示す特殊な記号です。

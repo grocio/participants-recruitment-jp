@@ -72,8 +72,8 @@ updateCalendar関数内の変数（36行目以降）
 
 | 実行 | イベント |
 |:---|:---|
-| sendToCalendar |スプレッドシートから　値の変更 |
-| updateCalendar | スプレッドシートから　フォーム送信時 |
+| sendToCalendar |スプレッドシートから　フォーム送信時値の変更 |
+| updateCalendar | スプレッドシートから　値の変更 |
 
 ### 以上で導入は終了です
 

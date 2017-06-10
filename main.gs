@@ -72,19 +72,9 @@ function updateCalendar(e){
       var yobi= new Array("日","月","火","水","木","金","土");
       var hizuke = month+"月"+day+"日 "+yobi[week]+"曜日"+hour+"時";
       
-      //参加者の名前などを含む、メール本文の内容（平日か土日化で文章を変える）
-      //平日に予約した場合のメール本文
-      if(week != 0 || 6){
-        var text = ParticipantName + "  様\n\nこの度は心理学実験への応募ありがとうございました。\n" +
-            hizuke + "からの心理学実験の予約が完了しましたのでメールいたします。\n" +
-            "場所は" + experimentRoom + "です。当日は直接お越しください。\n" +
-            "ご不明な点などありましたら、" + experimenterMailAddress +"までご連絡ください。\n" +
-            "当日もよろしくお願いいたします。\n\n実験責任者 " + experimenterName +
-            "（当日は他の者が実験担当する可能性があります）\n" +
-            "当日の連絡は" + experimenterPhone + "までお願いいたします。";
-      }
+      //参加者の名前などを含む、メール本文の内容（平日か土日かで文章を変える） 
       //メールの本文（土日に予約した場合）
-      else{
+      if(week == 0 || week == 6){
         var text = ParticipantName + "  様\n\nこの度は心理学実験への応募ありがとうございました。\n" +
             hizuke + "からの心理学実験の予約が完了しましたのでメールいたします。\n" +
             "場所は" + experimentRoom + "です。休日は教育学部棟玄関の鍵がかかっており、外から入ることができません。実験開始5分前から玄関前で待機しておりますので、実験開始時間までにお越しください。\n" +
@@ -93,6 +83,17 @@ function updateCalendar(e){
             "（当日は他の者が実験担当する可能性があります）\n" +
             "当日の連絡は" + experimenterPhone + "までお願いいたします。";
         }
+      
+      //平日に予約した場合のメール本文
+      else{
+        var text = ParticipantName + "  様\n\nこの度は心理学実験への応募ありがとうございました。\n" +
+            hizuke + "からの心理学実験の予約が完了しましたのでメールいたします。\n" +
+            "場所は" + experimentRoom + "です。当日は直接お越しください。\n" +
+            "ご不明な点などありましたら、" + experimenterMailAddress +"までご連絡ください。\n" +
+            "当日もよろしくお願いいたします。\n\n実験責任者 " + experimenterName +
+            "（当日は他の者が実験担当する可能性があります）\n" +
+            "当日の連絡は" + experimenterPhone + "までお願いいたします。";
+      }      
       //参加者にメールを送る
       var ParticipantEmail = sheet.getRange(activeCellRow, 4).getValue();
       MailApp.sendEmail(ParticipantEmail, "実験予約完了いたしました", text);

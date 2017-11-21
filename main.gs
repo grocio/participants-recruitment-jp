@@ -185,7 +185,7 @@ function updateCalendar(e){
     var yobi= new Array("日","月","火","水","木","金","土");
     var hizuke = month + "月" + day + "日" + '(' + yobi[week] + ") " + hour + ":" + min;
     
-    if(activeCell.getColumn()==10 && activeCell.getValue()==1 && sheet.getRange(activeCellRow,11)!=1)
+    if(activeCell.getColumn()==10 && activeCell.getValue()==1 && sheet.getRange(activeCellRow,11)!=1){
       //参加者の名前などを含む、メール本文の内容（平日か土日かで文章を変える） 
       //メールの本文（土日に予約した場合）
       if(week == 0 || week == 6){

@@ -41,10 +41,10 @@ function sendToCalendar(e){
     var cal = CalendarApp.getCalendarById(experimenterMailAddress);
 
     //仮予約の開始時間を取得
-    var stime = new Date(sheet.getRange(num_row, 5).getValue());
+    var stime = new Date(sheet.getRange(num_row, 9).getValue());
 
     //仮予約の開始時間から終了時間を設定
-    var etime = new Date(sheet.getRange(num_row, 5).getValue());
+    var etime = new Date(sheet.getRange(num_row, 9).getValue());
     etime.setMinutes(etime.getMinutes()+experimentLength);
 
     //メールに記載する、予約日時の変数（hidukeやappo）を作成する

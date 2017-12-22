@@ -186,6 +186,16 @@ function updateCalendar(e){
     var hizuke = month + "月" + day + "日" + '(' + yobi[week] + ") " + hour + ":" + min;
     
     if(activeCell.getColumn()==10 && activeCell.getValue()==1 && sheet.getRange(activeCellRow,11)!=1){
+        // 予約イベントを一旦削除
+        var reserve = cal.getEvents(stime, etime);
+        for (var i = 0; i < reserve.length; i++) {
+            if (reserve[i].getTitle() == title) {
+                reserve[i].deleteEvent();
+            }
+        }
+        //予約確定情報をカレンダーに追加
+        cal.createEvent(thing, stime, etime);
+        
       //参加者の名前などを含む、メール本文の内容（平日か土日かで文章を変える） 
       //メールの本文（土日に予約した場合）
       if(week == 0 || week == 6){
@@ -212,8 +222,21 @@ function updateCalendar(e){
       MailApp.sendEmail(ParticipantEmail, "実験予約完了いたしました", text, {
         bcc: experimenterMailAddress
       });
-
-      sheet.getRange(activeCellRow, 7).setValue(1);
+      //リマインダーのための設定をする
+      var reminder = new Date(sheet.getRange(activeCellRow, 9).getValue());
+      reminder.setDate(reminder.getDate() - 1); //reminderの時刻を予約時間の1日前に設定する。
+      sheet.getRange(activeCellRow, 12).setValue(reminder);
+      var time = new Date(); //現在時刻の取得
+      time.setHours(19); //19時に設定
+      //予約を完了させた日の19時にreminderの時刻が達していない場合、"送信準備"というコードを指定のセルに入力する
+      if (reminder > time) {
+          var code = "送信準備";
+      } else {
+          var code = "前日予約のため省略";
+      }
+      //sendMailsが参照するためのコードをセルに入力する
+      sheet.getRange(activeCellRow, 13).setValue(code);
+      sheet.getRange(activeCellRow, 11).setValue(1);
       }
   
     // --- 以前実験に参加したことがあり参加を断るの場合 ---

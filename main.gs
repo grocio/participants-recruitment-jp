@@ -24,7 +24,7 @@ function sendToCalendar(e){
     //有効なGooglesプレッドシートを開く
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     //後の関数のための列を付け足す
-    sheet.getRange(1, 10).setValue('予約ステータス(1=予約完了,222=既参加,333=実施期間外,444=定員超過,555=二重登録,999=予約キャンセル)');
+    sheet.getRange(1, 10).setValue('予約ステータス(1=予約完了,222=既参加,333=実施期間外,444=定員超過)//,555=二重登録,999=予約キャンセル)');
     sheet.getRange(1, 11).setValue('連絡したか');
     sheet.getRange(1, 12).setValue('リマインド日時');
     sheet.getRange(1, 13).setValue('リマインダー');

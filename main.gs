@@ -1,4 +1,4 @@
-// それぞれの関数をトリガーを設定することを忘れないように！！
+//それぞれの関数をトリガーを設定することを忘れないように！！
 // sendToCalendar:スプレッドシートから -> フォーム送信時
 // updateCalendar:スプレッドシートから -> 値の変更
 // sendReminders:時間主導型 -> 日タイマー -> 午後7時〜8時
@@ -12,12 +12,12 @@ function sendToCalendar(e){
     
     //エラーがあった際に報告するアドレスです。基本的にGMailのアドレスで良いと思います。
     var experimenterMailAddress = "exp.sample.taro@gmail.com";
-    var experimenterName = 'サンプル太郎'; //実験者名
+    var experimenterName = '実験者太郎'; //実験者名
     var experimentLength = 60; //実験の長さ（単位は分）
     
     // 自分が実験を担当できる時間を設定する（この時間以外に予約されたらエラーメールを予約者に返す）
-    var otime = 10; //実験開始可能時間
-    var ctime = 19; //実験終了時間
+    var otime = 9; //実験開始可能時間
+    var ctime = 18; //実験終了時間
     
     // --- 定義セクション終了 ---
     
@@ -63,19 +63,17 @@ function sendToCalendar(e){
     opening.setHours(otime, 0, 0);
     var closing = new Date(stime);
     closing.setHours(ctime, 0, 0);
-    //実験実施時間内のすべてのイベントを取得する。
+    //重複の確認
     var allEvents = cal.getEvents(stime, etime);
-    counter = 0
-    
+
     // --- 実験実施可能時間外に応募してきた場合 ---
     if (stime < opening || closing < etime) {
-        var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
-            '申し訳ありませんが、ご希望いただいた\n\n' + appo +
-            '\n\nは実験実施可能時間（' + opening.getHours() + '時〜' + closing.getHours() + '時）外です。\n\n' +
-            'お手数ですが、もう一度登録し直していただきますようお願いします。\n\n' + experimenterName;
-        MailApp.sendEmail(ParticipantEmail, "実験実施可能時間外です", text, {
-            bcc: experimenterMailAddress
-        });
+        var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName +
+          "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
+          '申し訳ありませんが、ご希望いただいた\n\n' + appo +
+          '\n\nは実験実施可能時間（' + opening.getHours() + '時〜' + closing.getHours() + '時）外です。\n\n' +
+          'お手数ですが、もう一度登録し直していただきますようお願いします。\n\n' + experimenterName;
+        MailApp.sendEmail(ParticipantEmail, "実験実施可能時間外です", text, {bcc: experimenterMailAddress});
         sheet.getRange(num_row, 10).setValue('時間外');
         sheet.getRange(num_row, 11).setValue(1);
         sheet.getRange(num_row, 12).setValue('N/A');
@@ -83,43 +81,16 @@ function sendToCalendar(e){
       
     // --- カレンダーに既に登録された予定や予約と重複する時間に応募してきた場合 ---
     } else if (allEvents.length > 0) {
-        // for (var i = 0; i < allEvents.length; i++) {
-        //     //既にある予約や予定と重複している場合
-        //     if (
-        //         (allEvents[i].getStartTime() < etime && etime < allEvents[i].getEndTime()) ||
-        //         (allEvents[i].getStartTime() < stime && stime < allEvents[i].getEndTime()) ||
-        //         (allEvents[i].getStartTime() == stime && etime == allEvents[i].getEndTime())
-        //     ) {
-        //         counter += 1
-        //     }
-        // }
-        // if (counter > 0) {
-        var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
-            '申し訳ありませんが、ご希望いただいた\n\n' + appo +
-            '\n\nにはすでに予約（予定）が入っており（タッチの差で他の方が予約をされた可能性もあります）、実験を実施することができません。\n\n' +
-            'お手数ですが、もう一度別の日時で登録し直していただきますようお願いします。\n\n' + experimenterName;
-        MailApp.sendEmail(ParticipantEmail, "予約が重複しています", text, {
-            bcc: experimenterMailAddress
-        });
+        var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName +
+          "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
+          '申し訳ありませんが、ご希望いただいた\n\n' + appo +
+          '\n\nにはすでに予約（予定）が入っており（タッチの差で他の方が予約をされた可能性もあります）、実験を実施することができません。\n\n' +
+          'お手数ですが、もう一度別の日時で登録し直していただきますようお願いします。\n\n' + experimenterName;
+        MailApp.sendEmail(ParticipantEmail, "予約が重複しています", text, {bcc: experimenterMailAddress});
         sheet.getRange(num_row, 10).setValue('重複');
         sheet.getRange(num_row, 11).setValue(1);
         sheet.getRange(num_row, 12).setValue('N/A');
         sheet.getRange(num_row, 13).setValue('N/A');
-          
-        // --- 特に問題がなければ仮予約情報をカレンダーに追加 ---
-        // } else {
-        //     var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\n" +
-        //         "この度は心理学実験への応募ありがとうございました。\n予約の確認メールを自動で送信しております。\n\n" +
-        //         appo + '\n\nで' + ParticipantName + '様の予約を受け付けました（まだ確定はしていません。）\n\n' +
-        //         '後日、予約完了のメールを送信いたします。\n\n' + 'もし日時の変更等がある場合は' + experimenterMailAddress +
-        //         'までご連絡ください。\nそれでは失礼します。\n\n' + experimenterName;
-        //     //予約確認メールを送信
-        //     MailApp.sendEmail(ParticipantEmail, "予約の確認", text, {
-        //         bcc: experimenterMailAddress
-        //     });
-        //     // 仮予約情報をカレンダーに作成
-        //     cal.createEvent(thing, stime, etime);
-        // }
     } else {
         var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\n" +
             "この度は心理学実験への応募ありがとうございました。\n予約の確認メールを自動で送信しております。\n\n" +
@@ -127,9 +98,7 @@ function sendToCalendar(e){
             '後日、予約完了のメールを送信いたします。\n\n' + 'もし日時の変更等がある場合は' + experimenterMailAddress +
             'までご連絡ください。\nそれでは失礼します。\n\n' + experimenterName;
         //予約確認メールを送信
-        MailApp.sendEmail(ParticipantEmail, "予約の確認", text, {
-            bcc: experimenterMailAddress
-        });
+        MailApp.sendEmail(ParticipantEmail, "予約の確認", text, {bcc: experimenterMailAddress});
         //仮予約情報をカレンダーに作成
         cal.createEvent(thing, stime, etime);
     }    
@@ -144,10 +113,10 @@ function updateCalendar(e){
   try{
     // --- 各変数の定義セクション ---
     
-    var experimenterName = "サンプル太郎";
+    var experimenterName = "実験者太郎";
     var experimenterMailAddress = "exp.sample.taro@gmail.com";
-    var experimenterPhone = "080XXXXAAAA";
-    var experimentRoom = "ABC学部実験室XYZ";
+    var experimenterPhone = "080xxxxxxxx";
+    var experimentRoom = "abc学部xyz実験室";
     var experimentLength = 60; //実験の長さ（単位は分）
     
     // --- 定義セクション終了 ---
@@ -173,9 +142,6 @@ function updateCalendar(e){
     var thing = "予約完了:" + ParticipantName +'('+sheet.getRange(activeCellRow, 3).getValue()+')';
     //ついでに被験者のメールアドレスも取得
     var ParticipantEmail = sheet.getRange(activeCellRow, 8).getValue();
-    
-    //予約情報をカレンダーに追加
-    cal.createEvent(thing, stime, etime);
 
     //見やすい日付
     var month = stime.getMonth()+1;
@@ -190,7 +156,7 @@ function updateCalendar(e){
         // 予約イベントを一旦削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == thing) {
+            if (reserve[i].getTitle() == "仮予約:" + ParticipantName) {
                 reserve[i].deleteEvent();
             }
         }
@@ -207,10 +173,9 @@ function updateCalendar(e){
             "当日もよろしくお願いいたします。\n\n実験責任者 " + experimenterName +
             "（当日は他の者が実験担当する可能性があります）\n" +
             "当日の連絡は" + experimenterPhone + "までお願いいたします。";
-        }
       
       //平日に予約した場合のメール本文
-      else{
+      }else{
         var text = ParticipantName + "  様\n\nこの度は心理学実験への応募ありがとうございました。\n" +
             hizuke + "からの心理学実験の予約が完了しましたのでメールいたします。\n" +
             "場所は" + experimentRoom + "です。当日は直接お越しください。\n" +
@@ -220,9 +185,7 @@ function updateCalendar(e){
             "当日の連絡は" + experimenterPhone + "までお願いいたします。";
       }      
       //参加者にメールを送る(bccで実験者にも送信する)
-      MailApp.sendEmail(ParticipantEmail, "実験予約完了いたしました", text, {
-        bcc: experimenterMailAddress
-      });
+      MailApp.sendEmail(ParticipantEmail, "実験予約完了いたしました", text, {bcc: experimenterMailAddress});
       //リマインダーのための設定をする
       var reminder = new Date(sheet.getRange(activeCellRow, 9).getValue());
       reminder.setDate(reminder.getDate() - 1); //reminderの時刻を予約時間の1日前に設定する。
@@ -245,7 +208,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == thing) {
+            if (reserve[i].getTitle() == "仮予約:" + ParticipantName) {
                 reserve[i].deleteEvent();
             }
         }
@@ -268,7 +231,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == thing) {
+            if (reserve[i].getTitle() == "仮予約:" + ParticipantName) {
                 reserve[i].deleteEvent();
             }
         }
@@ -290,7 +253,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == thing) {
+            if (reserve[i].getTitle() == "仮予約:" + ParticipantName) {
                 reserve[i].deleteEvent();
             }
         }

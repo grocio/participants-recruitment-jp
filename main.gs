@@ -190,7 +190,7 @@ function updateCalendar(e){
         // 予約イベントを一旦削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == title) {
+            if (reserve[i].getTitle() == thing) {
                 reserve[i].deleteEvent();
             }
         }
@@ -245,7 +245,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == title) {
+            if (reserve[i].getTitle() == thing) {
                 reserve[i].deleteEvent();
             }
         }
@@ -268,7 +268,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == title) {
+            if (reserve[i].getTitle() == thing) {
                 reserve[i].deleteEvent();
             }
         }
@@ -290,7 +290,7 @@ function updateCalendar(e){
         // 予約イベントを削除
         var reserve = cal.getEvents(stime, etime);
         for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == title) {
+            if (reserve[i].getTitle() == thing) {
                 reserve[i].deleteEvent();
             }
         }

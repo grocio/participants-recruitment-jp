@@ -64,7 +64,7 @@ function sendToCalendar(e){
     var closing = new Date(stime);
     closing.setHours(ctime, 0, 0);
     //実験実施時間内のすべてのイベントを取得する。
-    var allEvents = cal.getEvents(opening, closing);
+    var allEvents = cal.getEvents(stime, etime);
     counter = 0
     
     // --- 実験実施可能時間外に応募してきた場合 ---
@@ -83,43 +83,43 @@ function sendToCalendar(e){
       
     // --- カレンダーに既に登録された予定や予約と重複する時間に応募してきた場合 ---
     } else if (allEvents.length > 0) {
-        for (var i = 0; i < allEvents.length; i++) {
-            //既にある予約や予定と重複している場合
-            if (
-                (allEvents[i].getStartTime() < etime && etime < allEvents[i].getEndTime()) ||
-                (allEvents[i].getStartTime() < stime && stime < allEvents[i].getEndTime()) ||
-                (allEvents[i].getStartTime() == stime && etime == allEvents[i].getEndTime())
-            ) {
-                counter += 1
-            }
-        }
-        if (counter > 0) {
-            var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
-                '申し訳ありませんが、ご希望いただいた\n\n' + appo +
-                '\n\nにはすでに予約（予定）が入っており（タッチの差で他の方が予約をされた可能性もあります）、実験を実施することができません。\n\n' +
-                'お手数ですが、もう一度別の日時で登録し直していただきますようお願いします。\n\n' + experimenterName;
-            MailApp.sendEmail(ParticipantEmail, "予約が重複しています", text, {
-                bcc: experimenterMailAddress
-            });
-            sheet.getRange(num_row, 10).setValue('重複');
-            sheet.getRange(num_row, 11).setValue(1);
-            sheet.getRange(num_row, 12).setValue('N/A');
-            sheet.getRange(num_row, 13).setValue('N/A');
+        // for (var i = 0; i < allEvents.length; i++) {
+        //     //既にある予約や予定と重複している場合
+        //     if (
+        //         (allEvents[i].getStartTime() < etime && etime < allEvents[i].getEndTime()) ||
+        //         (allEvents[i].getStartTime() < stime && stime < allEvents[i].getEndTime()) ||
+        //         (allEvents[i].getStartTime() == stime && etime == allEvents[i].getEndTime())
+        //     ) {
+        //         counter += 1
+        //     }
+        // }
+        // if (counter > 0) {
+        var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\nこの度は心理学実験への応募ありがとうございました。\n" +
+            '申し訳ありませんが、ご希望いただいた\n\n' + appo +
+            '\n\nにはすでに予約（予定）が入っており（タッチの差で他の方が予約をされた可能性もあります）、実験を実施することができません。\n\n' +
+            'お手数ですが、もう一度別の日時で登録し直していただきますようお願いします。\n\n' + experimenterName;
+        MailApp.sendEmail(ParticipantEmail, "予約が重複しています", text, {
+            bcc: experimenterMailAddress
+        });
+        sheet.getRange(num_row, 10).setValue('重複');
+        sheet.getRange(num_row, 11).setValue(1);
+        sheet.getRange(num_row, 12).setValue('N/A');
+        sheet.getRange(num_row, 13).setValue('N/A');
           
         // --- 特に問題がなければ仮予約情報をカレンダーに追加 ---
-        } else {
-            var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\n" +
-                "この度は心理学実験への応募ありがとうございました。\n予約の確認メールを自動で送信しております。\n\n" +
-                appo + '\n\nで' + ParticipantName + '様の予約を受け付けました（まだ確定はしていません。）\n\n' +
-                '後日、予約完了のメールを送信いたします。\n\n' + 'もし日時の変更等がある場合は' + experimenterMailAddress +
-                'までご連絡ください。\nそれでは失礼します。\n\n' + experimenterName;
-            //予約確認メールを送信
-            MailApp.sendEmail(ParticipantEmail, "予約の確認", text, {
-                bcc: experimenterMailAddress
-            });
-            // 仮予約情報をカレンダーに作成
-            cal.createEvent(thing, stime, etime);
-        }
+        // } else {
+        //     var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\n" +
+        //         "この度は心理学実験への応募ありがとうございました。\n予約の確認メールを自動で送信しております。\n\n" +
+        //         appo + '\n\nで' + ParticipantName + '様の予約を受け付けました（まだ確定はしていません。）\n\n' +
+        //         '後日、予約完了のメールを送信いたします。\n\n' + 'もし日時の変更等がある場合は' + experimenterMailAddress +
+        //         'までご連絡ください。\nそれでは失礼します。\n\n' + experimenterName;
+        //     //予約確認メールを送信
+        //     MailApp.sendEmail(ParticipantEmail, "予約の確認", text, {
+        //         bcc: experimenterMailAddress
+        //     });
+        //     // 仮予約情報をカレンダーに作成
+        //     cal.createEvent(thing, stime, etime);
+        // }
     } else {
         var text = ParticipantName + "  様\n\n心理学実験実施責任者の" + experimenterName + "です。\n" +
             "この度は心理学実験への応募ありがとうございました。\n予約の確認メールを自動で送信しております。\n\n" +

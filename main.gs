@@ -180,6 +180,7 @@ function updateCalendar(e){
     //見やすい日付
     var month = stime.getMonth()+1;
     var hour = stime.getHours();
+    var min = ('0' + stime.getMinutes()).slice(-2);
     var week = stime.getDay();
     var day = stime.getDate();
     var yobi= new Array("日","月","火","水","木","金","土");

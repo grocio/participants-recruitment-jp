@@ -8,11 +8,11 @@ sendReminders:時間主導型 -> 日タイマー -> 午後7時〜8時
 // --- 各変数の定義セクション ---
 //ご自身の実験に合わせて各変数の値を変更してください。
 var experimenterName = '実験者太郎'; //実験者名
-var experimenterMailAddress = "github.test.participant@gmail.com";
+var experimenterMailAddress = "io.panasonic.test@gmail.com";
 var experimenterPhone = '080-1234-5678';
 var experimentRoom = "abc学部xyz実験室";
 var experimentLength = 60; //実験の長さ（単位は分）
-var url = 'https://docs.google.com/spreadsheets/d/180VT_tRqmYBWCvLPlJYk_gVfSWWT47FtCGsdqTbg6T0/edit#gid=1566578720';
+var url = 'https://docs.google.com/spreadsheets/d/';
 
 // 自分が実験を担当できる1日の時間を設定する（この時間以外に予約されたらエラーメールを予約者に返す）
 var openTime = 9; //実験開始可能時間
@@ -20,17 +20,17 @@ var closeTime = 18; //実験終了時間
 //実験の開始日の前日の日と終了日を設定する
 //6月20日スタートならopenDateは19日に設定しておく
 //月に関しては、-1をする必要がある点に注意する（例. 7月ならopenMonth = 7 - 1）
-var openMonth = 1 - 1;//1〜12月 -> 0 ~ 11に変更
-var openDate = 29;//日
-var closeMonth = 12 - 1;//1〜12月 -> 0 ~ 11に変更
-var closeDate = 1;//日
+var openMonth = 6 - 1;//1〜12月 -> 0 ~ 11に変更
+var openDate = 1;//日
+var closeMonth = 7 - 1;//1〜12月 -> 0 ~ 11に変更
+var closeDate = 10;//日
 
 // 既に実験に参加済みテキスト
 var textAlreadyDone = 'PARTICIPANTNAME様\n'+
 '\n'+
 '心理学実験実施責任者の'+experimenterName+'です。\n'+
 'この度は心理学実験への応募ありがとうございました。\n'+
-'大変申し訳ありませんが、PARTICIPANTNAME様は以前実施した同様の実験にご参加いただいており、今回の実験にはご参加いただけません。ご了承ください。\n'+
+'大変申し訳ありませんが、以前実施した同様の実験にご参加いただいており、今回の実験にはご参加いただけません。ご了承ください。\n'+
 '\n'+
 'ご不明な点などありましたら、'+experimenterMailAddress+'までご連絡ください。\n'+
 '今後ともよろしくお願いします。\n'+
@@ -58,7 +58,7 @@ var textOutoftime = 'PARTICIPANTNAME様\n'+
 '\n'+
 'APPOINTMENT'+
 '\n'+
-'は実験実施可能時間（'+openTime+' 時〜'+closeTime+'時）外または、実施期間（'+openMonth+'月'+openDate+'日〜'+closeMonth+'月'+closeDate+'日）外です。\n'+
+'は実験実施可能時間（'+openTime+' 時〜'+closeTime+'時）外または、実施期間（'+(openMonth+1)+'月'+openDate+'日〜'+(closeMonth+1)+'月'+closeDate+'日）外です。\n'+
 'お手数ですが、もう一度登録し直していただきますようお願いします。\n'+
 '\n'+
 experimenterName;
@@ -100,7 +100,7 @@ var textHolidayBookingDone = 'PARTICIPANTNAME様\n'+
 'ご不明な点などありましたら、'+experimenterMailAddress+'までご連絡ください。\n'+
 '当日もよろしくお願いいたします。\n'+
 '\n'+
-'実験責任者'+experimenterName+'（当日は他の者が実験担当する可能性があります)'+
+'実験責任者'+experimenterName+'（当日は他の者が実験担当する可能性があります)\n'+
 '当日の連絡は'+experimenterPhone+'までお願いいたします。';
 // 予約完了テキスト(平日)'+
 var textWeekdayBookingDone = 'PARTICIPANTNAME様\n'+
@@ -111,7 +111,7 @@ var textWeekdayBookingDone = 'PARTICIPANTNAME様\n'+
 'ご不明な点などありましたら、'+experimenterMailAddress+'までご連絡ください。\n'+
 '当日もよろしくお願いいたします。\n'+
 '\n'+
-'実験責任者'+experimenterName+'（当日は他の者が実験担当する可能性があります)'+
+'実験責任者'+experimenterName+'（当日は他の者が実験担当する可能性があります)\n'+
 '当日の連絡は'+experimenterPhone+'までお願いいたします。';
 // リマインダー(休日)_
 var textReminderHoliday ='PARTICIPANTNAME様\n'+
@@ -161,7 +161,7 @@ function beautifulDate(d,option){
  
 // sheetModifySendMail
 function sendMailModifySheet(sheet, numRow, ParticipantEmail, mailText, mailTitle, operationDict){
-    //MailApp.sendEmail(ParticipantEmail, mailTitle, mailText, {bcc: experimenterMailAddress});
+    MailApp.sendEmail(ParticipantEmail, mailTitle, mailText, {bcc: experimenterMailAddress});
   
     //Logger.log(typeof sheet);
     //Logger.log(sheet);
@@ -235,7 +235,7 @@ function sendToCalendar(e){
     //実行に失敗した時に通知
     //MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.getRange(1,15).setValue(exp.message);
+    sheet.getRange(numRow,15).setValue(exp.message);
   }
 }
 
@@ -326,7 +326,7 @@ function updateCalendar(e){
   }catch(exp){
     //実行に失敗した時に通知
     MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
-    Logger.log(exp.message);
+    sheet.getRange(numRow,16).setValue(exp.message);
   }
 }
 
@@ -339,13 +339,14 @@ function sendReminders(e) {
       // スプレッドシートを1列ずつ参照し、該当する被験者を探していく。
       for (var row = 1; row < data.length; row++) {
           //ステータスが送信準備になっていることを確認する
-          if (data[row][12] == "送信準備") { 
-              var reminder = data[row][11]; 
+          if (data[row][12] == "送信準備") {
+              var reminder = data[row][11];
               // もし現在時刻がリマインド日時を過ぎていたならメールを送信
               if ((reminder != "") && (reminder.getTime() <= time)) {
                   // メールの本文の内容を作成するための要素を定義
                   var ParticipantName = data[row][1]; //被験者の名前
                   var week = data[row][8].getDay();
+                  var stime = data[row][8];
                   //休日（前半,後半は平日）に予約した場合のメール本文
                   if (week == 0 || week == 6) {
                       var mailText = textReminderHoliday.replace('PARTICIPANTNAME', ParticipantName)
@@ -365,6 +366,7 @@ function sendReminders(e) {
   } catch (exp) {
       //実行に失敗した時に通知
       MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
+        sheet.getRange(numRow,17).setValue(exp.message);
       Logger.log(exp.message);
   }
 }

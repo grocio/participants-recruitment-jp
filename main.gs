@@ -183,11 +183,9 @@ var closeExperimentDate = new Date(year=new Date().getFullYear(), month=closeMon
 //仮予約があった際に、カレンダーに書き込む関数
 function sendToCalendar(e){
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.getRange(1,18).setValue('てきとーすぎる');
   try{
     //有効なGooglesプレッドシートを開く
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.getRange(1,14).setValue('あたらしすぎる');
     sheet.getRange(1, 10).setValue('予約ステータス(111=予約完了,222=既参加,333=定員超過)'); //,444=二重登録,999=予約キャンセル)');
     sheet.getRange(1, 11).setValue('連絡したか');
     sheet.getRange(1, 12).setValue('リマインド日時');
@@ -232,13 +230,11 @@ function sendToCalendar(e){
                                      .replace('APPOINTMENT', appo);
       sendMailModifySheet(sheet, numRow, ParticipantEmail, mailText, "予約の確認");
       cal.createEvent(thing, stime, etime); //仮予約情報をカレンダーに作成
-      sheet.getRange(numRow,10).setValue('ふぁっく');
     }    
   }catch(exp){
     //実行に失敗した時に通知
     //MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.getRange(1,14).setValue('エラーすぎるすぎる');
     sheet.getRange(1,15).setValue(exp.message);
   }
 }

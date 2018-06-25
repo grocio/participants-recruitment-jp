@@ -8,11 +8,11 @@ sendReminders:時間主導型 -> 日タイマー -> 午後7時〜8時
 // --- 各変数の定義セクション ---
 //ご自身の実験に合わせて各変数の値を変更してください。
 var experimenterName = '実験者太郎'; //実験者名
-var experimenterMailAddress = "io.panasonic.test@gmail.com";
+var experimenterMailAddress = "xxx@gmail.com";
 var experimenterPhone = '080-1234-5678';
 var experimentRoom = "abc学部xyz実験室";
 var experimentLength = 60; //実験の長さ（単位は分）
-var url = 'https://docs.google.com/spreadsheets/d/';
+var url = 'https://docs.google.com/spreadsheets/xxxx'; //スプレッドシートのURL
 
 // 自分が実験を担当できる1日の時間を設定する（この時間以外に予約されたらエラーメールを予約者に返す）
 var openTime = 9; //実験開始可能時間
@@ -235,7 +235,6 @@ function sendToCalendar(e){
     //実行に失敗した時に通知
     //MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.getRange(numRow,15).setValue(exp.message);
   }
 }
 
@@ -326,7 +325,6 @@ function updateCalendar(e){
   }catch(exp){
     //実行に失敗した時に通知
     MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
-    sheet.getRange(numRow,16).setValue(exp.message);
   }
 }
 
@@ -366,7 +364,5 @@ function sendReminders(e) {
   } catch (exp) {
       //実行に失敗した時に通知
       MailApp.sendEmail(experimenterMailAddress, exp.message, exp.message);
-        sheet.getRange(numRow,17).setValue(exp.message);
-      Logger.log(exp.message);
   }
 }

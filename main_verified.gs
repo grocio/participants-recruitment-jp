@@ -215,7 +215,7 @@ function sendToCalendar(e){
     var allEvents = cal.getEvents(stime, etime);
 
     //実験実施可能時間・期間外に応募してきた場合
-    if (stime < opening || closing < etime || stime < openExperimentDate || closeExperimentDate < stime) {
+    if (stime < opening || closing < etime || stime < openExperimentDate || closeExperimentDate < etime) {
       var mailText = textOutoftime.replace('PARTICIPANTNAME', ParticipantName)
                               .replace('APPOINTMENT', appo);
       sendMailModifySheet(sheet, numRow, ParticipantEmail, mailText, "実験実施可能時間外です", {10:'時期間外', 11:1, 12:'N/A', 13:'N/A'}); 

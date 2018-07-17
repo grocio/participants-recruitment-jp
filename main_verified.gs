@@ -7,12 +7,12 @@ sendReminders:時間主導型 -> 日タイマー -> 午後7時〜8時
 
 // --- 各変数の定義セクション ---
 //ご自身の実験に合わせて各変数の値を変更してください。
-var experimenterName = ‘テスト実験者’; //実験者名
-var experimenterMailAddress = “test@gmail.com";
-var experimenterPhone = '080-1234-1234’;
+var experimenterName = 'テスト'; //実験者名
+var experimenterMailAddress = "test@gmail.com";
+var experimenterPhone = '080-1234-1234';
 var experimentRoom = "教育学部2階第IV実験室(228室)";
 var experimentLength = 60; //実験の長さ（単位は分）
-var url = 'https://docs.google.com/spreadsheets/'; //スプレッドシートのURL
+var url = 'https://docs.google.com/spreadsheets/d/'; //スプレッドシートのURL
 
 // 自分が実験を担当できる1日の時間を設定する（この時間以外に予約されたらエラーメールを予約者に返す）
 var openTime = 10; //実験開始可能時間

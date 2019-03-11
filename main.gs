@@ -12,11 +12,11 @@ try{
     var answers = ss.getSheets()[0];
     var colParName = Number(expInfo['colParName']);
     var colParNameKana = Number(expInfo['colParNameKana']);
-    var colMember = answers.getLastColumn();
-    var colReminded = colMember - 1;
-    var colRemindDate = colMember - 2;
-    var colMailed = colMember - 3;
-    var colStatus = colMember - 4;
+    var colCharge = answers.getLastColumn();
+    var colReminded = colCharge - 1;
+    var colRemindDate = colCharge - 2;
+    var colMailed = colCharge - 3;
+    var colStatus = colCharge - 4;
     if (type == 2) {
       colExpTime = Number(expInfo['colExpTime']);
     }
@@ -53,19 +53,34 @@ function getExpInfo() {
 
 // 希望日時を取得しdate型に変換する関数
 function getExpDateTime(sheet, row) {
-  var from = new Date(sheet.getRange(row, colExpDate).getValue());
   if (type == 1) {
+    var from = new Date(sheet.getRange(row, colExpDate).getValue());
     var to = new Date(from);
-    var expLength = sheet.getRange(row, colExpDate).getValue();
+    var expLength = expInfo['experimentLength'];
     to.setHours(from.getHours() + expLength);
   } else {
-    var to = new Date(sheet.getRange(row, colExpDate).getValue());
-    var datetime = sheet.getRange(row, colExpTime).getValue(); // この段階では文字列
-    datetime = zenToHan(datetime);
+    var from = new Date();
+    var date = sheet.getRange(row, colExpDate).getValue();
+    date = zenToHan(date);
+    var dateInfo = date.match(/\d+/g);
+    if (dateInfo.length == 3) { //年月日なら
+      from.setFullYear(dateInfo[0], dateInfo[1], dateInfo[2]);
+    } else if (dateInfo.length == 2) { //月日なら
+      from.setMonth(dateInfo[0], dateInfo[1]);
+    } else if (dateInfo.length == 1) { //日なら
+      from.setDate(dateInfo[0]);
+    }
+    var to = new Date(from);
+    var time = sheet.getRange(row, colExpTime).getValue(); // この段階では文字列
+    time = zenToHan(time);
     var FromTo = datetime.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
-    Logger.log(FromTo);
     from.setHours(FromTo[0],FromTo[1]);
-    to.setHours(FromTo[2],FromTo[3]);
+    if (FromTo.length == 4) {
+      to.setHours(FromTo[2],FromTo[3]);
+    } else if (FromTo.length == 2) {
+      var expLength = expInfo['experimentLength'];
+      to.setHours(from.getHours() + expLength);
+    }
   }
   return {'from': from, 'to': to};
 }
@@ -117,9 +132,9 @@ function sendEmail(name, address, from, to, trigger, row) {
   expInfo['fromWhen'] = formattedFrom;
   expInfo['toWhen'] = formattedTo;
   var contents = getTemplate(trigger, from);
-  var subject = contents['subject'];
+  var subject = makeMailBody(contents['subject']);
   var body = makeMailBody(contents['body']);
-  var bccAddresses = getbccAddresses(expInfo['experimenterMailAddress'], row)
+  var bccAddresses = getbccAddresses(row)
   MailApp.sendEmail(address, subject, body, {bcc: bccAddresses});
 }
 
@@ -129,23 +144,38 @@ function modifySheet(sheet, numRow, columns, values) {
   }
 }
 
+function getMemberInfo() {
+  var sheet = ss.getSheetByName('メンバー');
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+  var memberInfo = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  var memberInfoDict = {};
+  // 取得した配列を連想配列に変換する
+  for (var i = 0; i < memberInfo.length; i++) {
+    key = zenToHan(memberInfo[i][0]);
+    memberInfoDict[key] = zenToHan(memberInfo[i][2]); // 念の為;
+  }
+  return memberInfoDict;
+}
+
 // memberシートからbccアドレスを追加する関数
-function getbccAddresses(firstaddress, row) {
+function getbccAddresses(row) {
   var activeSheet = ss.getActiveSheet();
-  // Logger.log(activeSheet);
-  var members = ss.getSheetByName('メンバー');
-  var members_mtrx = members.getDataRange().getValues();
-  // Logger.log(members_mtrx);
-  var lastCol = activeSheet.getLastColumn();
-  var charge = activeSheet.getRange(row,lastCol).getValue();
-  // Logger.log(charge);
-  var bccAddress = [firstaddress];
-  for (var i = 0; i < members_mtrx.length; i++) {
-    if (members_mtrx[i][0] == charge){
-      bccAddress.push(members_mtrx[i][2]);
+  var memberInfo = getMemberInfo();
+  var charges = activeSheet.getRange(row, colCharge).getValue();
+  charges = zenToHan(charges);
+  var bccAddress = [expInfo['experimenterMailAddress']];
+  if (typeof charges == 'number') {// 一人だけが指定されている場合
+    bccAddress.push(memberInfo[charges]);
+  } else if (typeof charges == 'string') {// 複数人が指定されている場合
+    if (charges.length > 0) {
+      var chargeIDs = charges.match(/\d+/g);
+      for (var i = 0; i < chargeIDs.length; i++) {
+        var chargeID = chargeIDs[i];
+        bccAddress.push(memberInfo[chargeID]);
+      }
     }
   }
-  // Logger.log(bccAddress);
   return bccAddress.join(',');
 }
 
@@ -290,8 +320,8 @@ function sendReminders() {
           var trigger = 'リマインダー';
           var expDT = getExpDateTime(sheet, row + 1);
           var from = expDT['from'];
-          "リマインダーでは to を使っていない"
-          sendEmail(participantName, ParticipantEmail, from, to, trigger, numRow)
+          var to = expDT['to'];
+          sendEmail(participantName, ParticipantEmail, from, to, trigger, row + 1)
           modifySheet(sheet, row + 1, [colReminded], ['送信済み']);
         }
       }
@@ -326,7 +356,7 @@ function setting(){
     buttons = Browser.Buttons.OK;
     start = false;
   }
-  var choice = Browser.msgBox("設定の初期化を行います", msg, buttons);
+  var choice = Browser.msgBox("設定の初期化", msg, buttons);
   if (choice !== "ok") {
     start = false;
   }
@@ -334,9 +364,9 @@ function setting(){
     def(type);
     msg = "初期設定が終了しました。\\n";
     msg += "「設定」シートの太枠に囲まれた項目を適切な情報に変更してください。";
-    Browser.msgBox("設定の初期化を行います", msg, Browser.Buttons.OK);
+    Browser.msgBox("設定の初期化", msg, Browser.Buttons.OK);
   } else {
-    Browser.msgBox("設定の初期化を行います", "初期化はキャンセルされました", Browser.Buttons.OK);
+    Browser.msgBox("設定の初期化", "初期化はキャンセルされました", Browser.Buttons.OK);
   }
 }
 
@@ -369,13 +399,13 @@ function def(type){
     var end = new Date(start); end.setDate(start.getDate() + 13);
     formattedEnd = myFormatDate(end, 'yyyy/MM/dd');
     var config = ss.getSheetByName('設定');
-    var note2 = '「フォームの回答」に合わせて値を変更してください。この項目はメールでは使用されませんが，2列目は変更しないでください。';
-    var defaultExpInfo = [['設定項目','メール本文内でのkey','値','備考'],
+    var note2 = '「フォームの回答」の列番号と一致しているか確認してください（A列が1）';
+    var defaultExpInfo = [['設定項目','メール本文内でのキー','値','備考'],
                           ['実験責任者名','experimenterName','実験太郎', "実験責任者の名前を記入してください"],
                           ['実験責任者のGmailアドレス','experimenterMailAddress','hogehoge@gmail.com', "実験用のGmailアドレスを記入してください"],
                           ['実験責任者の電話番号','experimenterPhone','xxx-xxx-xxx', "電話番号を記入してください"],
                           ['実験の実施場所','experimentRoom','実施場所',"実験の実施場所を記入してください"],
-                          ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください'],
+                          ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],
                           ['実験開始可能時間','openTime', 9, '何時から実験できるかを記入してください（24時間表記）'],
                           ['実験最終時間','closeTime', 19,'何時まで実験可能かを記入してください（24時間表記）'],
                           ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
@@ -492,8 +522,13 @@ function def(type){
     template.getRange(1, 1, tempNRow, tempNCol).setValues(defaultTemplate);
 
     var member = ss.getSheetByName('メンバー');
+    var sh1Name = sheets[0].getName();
+    var sh1LastCol = sheets[0].getLastColumn();
+    var sh1LColNotation = sheets[0].getRange(1, sh1LastCol).getA1Notation().replace(/\d/,''); // 列のアルファベットを取得
+    var formula = "=COUNTIF('" + sh1Name + "'!" + sh1LColNotation + ":" + sh1LColNotation + ", A2)"
+    Logger.log([sh1Name, sh1LastCol, sh1LColNotation, formula]);
     var defaultMember = [['キー', '名前', 'アドレス', '担当回数', '備考'],
-                         [1, 'りんご', 'apple@hogege.com', '','Gmailのアドレスでなくても大丈夫です。'],
+                         [1, 'りんご', 'apple@hogege.com', formula,'Gmailのアドレスでなくても大丈夫です。'],
                          [2, 'ごりら', 'gorilla@hogege.com','',''],
                          [3, 'らっぱ', 'horn@hogege.com','','']];
     var memNRow = defaultMember.length;

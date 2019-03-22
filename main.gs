@@ -57,7 +57,7 @@ function getExpDateTime(sheet, row) {
     var from = new Date(sheet.getRange(row, colExpDate).getValue());
     var to = new Date(from);
     var expLength = expInfo['experimentLength'];
-    to.setHours(from.getHours() + expLength);
+    to.setMinutes(from.getMinutes() + expLength);
   } else {
     var from = new Date();
     var date = sheet.getRange(row, colExpDate).getValue();
@@ -79,7 +79,7 @@ function getExpDateTime(sheet, row) {
       to.setHours(FromTo[2],FromTo[3]);
     } else if (FromTo.length == 2) {
       var expLength = expInfo['experimentLength'];
-      to.setHours(from.getHours() + expLength);
+      to.setMinutes(from.getMinutes() + expLength);
     }
   }
   return {'from': from, 'to': to};
@@ -124,13 +124,12 @@ function myFormatDate(datetime, pattern) {
 function sendEmail(name, address, from, to, trigger, row) {
   //メールに記載する、予約日時の変数を作成する
   var yobi = new Array("日", "月", "火", "水", "木", "金", "土")[from.getDay()];
-  var formattedDate = myFormatDate(from, 'MM/dd') + "（"+ yobi +"）";
-  var formattedFrom = myFormatDate(from, 'HH:mm');
-  var formattedTo = myFormatDate(to, 'HH:mm');
   expInfo['participantName'] = name;
-  expInfo['expDate'] = formattedDate;
-  expInfo['fromWhen'] = formattedFrom;
-  expInfo['toWhen'] = formattedTo;
+  expInfo['expDate'] = myFormatDate(from, 'MM/dd') + "（"+ yobi +"）";
+  expInfo['fromWhen'] = myFormatDate(from, 'HH:mm');
+  expInfo['toWhen'] = myFormatDate(to, 'HH:mm');
+  expInfo['openDate'] = myFormatDate(expInfo['openDate'], 'yyyy/MM/dd');
+  expInfo['closeDate'] = myFormatDate(expInfo['closeDate'], 'yyyy/MM/dd');
   var contents = getTemplate(trigger, from);
   var subject = makeMailBody(contents['subject']);
   var body = makeMailBody(contents['body']);
@@ -194,11 +193,8 @@ function sendToCalendar() {
     var to = expDT['to'];//仮予約の開始時間から終了時間を設定
     var openTime = expInfo['openTime'];
     var closeTime = expInfo['closeTime'];
-    monthDate = new Date();
-    var openYMD = expInfo['openDate'].split(/[^1-9]/);
-    openDate = monthDate.setFullYear(openYMD[0], openYMD[1] - 1, openYMD[2]);
-    var closeYMD = expInfo['closeDate'].split(/[^1-9]/);
-    openDate = monthDate.setFullYear(closeYMD[0], closeYMD[1] - 1, closeYMD[2]);
+    var openDate = expInfo['openDate'];
+    var closeDate = expInfo['closeDate'];
 
     var allEvents = cal.getEvents(from, to);
     if (allEvents.length > 0) {
@@ -296,7 +292,7 @@ function updateCalendar() {
     }
     Logger.log(fb);
     Browser.msgBox("エラーが発生しました", fb, Browser.Buttons.OK);
-    //MailApp.sendEmail(expInfo['experimenterMailAddress'], exp.message, exp.message);
+    MailApp.sendEmail(expInfo['experimenterMailAddress'], exp.message, exp.message);
   }
 }
 

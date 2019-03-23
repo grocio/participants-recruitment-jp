@@ -234,7 +234,6 @@ function updateCalendar() {
       var to = expDT['to'];//予約の開始時間から終了時間を設定
 
       //予約された日時（見やすい形式）
-      "要修正"
       var participantName = sheet.getRange(activeRow, colParName).getValue();
       var activeColumn = activeCell.getColumn();
       var activeColname = sheet.getRange(1,activeColumn).getValue();

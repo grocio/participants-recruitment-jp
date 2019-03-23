@@ -357,7 +357,8 @@ function setting(){
     start = false;
   }
   if (start) {
-    def(type);
+    setTriggers();
+    setDefault(type);
     msg = "初期設定が終了しました。\\n";
     msg += "「設定」シートの太枠に囲まれた項目を適切な情報に変更してください。";
     Browser.msgBox("設定の初期化", msg, Browser.Buttons.OK);
@@ -366,7 +367,17 @@ function setting(){
   }
 }
 
-function def(type){
+function setTriggers(){
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+  ScriptApp.newTrigger('sendToCalendar').forSpreadsheet(ss).onFormSubmit().create();
+  ScriptApp.newTrigger('updateCalendar').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('sendReminders').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
+}
+
+function setDefault(type){
   try {
     var sheets = ss.getSheets();
     var addNewCol = true;

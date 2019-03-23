@@ -1,7 +1,7 @@
 var type = 1; // 1: 自由回答, 2: 選択式 どちらかの半角数字を入れてください。
 
 function init() { // デフォルトの設定を作成する関数
-  setting(type);
+  setting();
 }
 
 var ss = SpreadsheetApp.getActiveSpreadsheet(); // spreadsheet
@@ -329,6 +329,17 @@ function sendReminders() {
   }
 }
 
+function detectUpdate() {
+  var sheetID = ss.getActiveSheet().getSheetId();
+  if (sheetID === ss.getSheets()[0].getSheetId()){ //設定用のシートをいじっても何も起きないようにする
+    updateCalendar();
+  } else if (sheetID == ss.getSheetByName('設定').getSheetId()) {
+    if (expInfo['remindHour'] != 19) {
+      updateTriggers();
+    }
+  }
+}
+
 // 設定用のシートおよびその見本を最初に作る関数
 function setting(){
   buttons = Browser.Buttons.OK_CANCEL;
@@ -357,7 +368,7 @@ function setting(){
   }
   if (start) {
     setTriggers();
-    setDefault(type);
+    setDefault();
     msg = "初期設定が終了しました。\\n";
     msg += "「設定」シートの太枠に囲まれた項目を適切な情報に変更してください。";
     Browser.msgBox("設定の初期化", msg, Browser.Buttons.OK);
@@ -366,17 +377,28 @@ function setting(){
   }
 }
 
-function setTriggers(){
+function setTriggers() {
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     ScriptApp.deleteTrigger(triggers[i]);
   }
   ScriptApp.newTrigger('sendToCalendar').forSpreadsheet(ss).onFormSubmit().create();
-  ScriptApp.newTrigger('updateCalendar').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('detectUpdate').forSpreadsheet(ss).onEdit().create();
   ScriptApp.newTrigger('sendReminders').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
 }
 
-function setDefault(type){
+function updateTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    // sendRemindersのトリガーだけを削除する
+    if (triggers[i].getEventType() == ScriptApp.EventType.CLOCK) {
+      ScriptApp.deleteTrigger(triggers[i]);
+      ScriptApp.newTrigger('sendReminders').timeBased().atHour(expInfo['remindHour']).nearMinute(30).everyDays(1).create();
+    }
+  }
+}
+
+function setDefault() {
   try {
     var sheets = ss.getSheets();
     var addNewCol = true;
@@ -412,18 +434,19 @@ function setDefault(type){
                           ['実験責任者の電話番号','experimenterPhone','xxx-xxx-xxx', "電話番号を記入してください"],
                           ['実験の実施場所','experimentRoom','実施場所',"実験の実施場所を記入してください"],
                           ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],
-                          ['実験開始可能時間','openTime', 9, '何時から実験できるかを記入してください（24時間表記）'],
-                          ['実験最終時間','closeTime', 19,'何時まで実験可能かを記入してください（24時間表記）'],
+                          ['実験開始可能時刻','openTime', 9, '何時から実験できるかを記入してください（24時間表記）'],
+                          ['実験終了時刻','closeTime', 19,'何時まで実験可能かを記入してください（24時間表記）'],
                           ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
                           ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
+                          ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
                           ['参加者名の列番号','colParName', 2, note2],
                           ['ふりがなの列番号','colParNameKana', 3, note2 + 'もし利用しない場合は-1を入力してください。'],
-                          ['参加者アドレスの列番号','colAddress',lastCol - 7, note2]];
+                          ['参加者アドレスの列番号','colAddress',lastCol - 6, note2]];
 
-    var verChoice = [['希望日の列番号','colExpDate', lastCol - 6, note2],
-                     ['希望時間の列番号','colExpTime', lastCol - 5, note2]];
+    var verChoice = [['希望日の列番号','colExpDate', lastCol - 5, note2],
+                     ['希望時間の列番号','colExpTime', lastCol - 4, note2]];
 
-    var verAnswer = [['希望日時の列番号','colExpDate', lastCol - 6, note2]];
+    var verAnswer = [['希望日時の列番号','colExpDate', lastCol - 5, note2]];
 
     if (type == 1) {
       defaultExpInfo = defaultExpInfo.concat(verAnswer)

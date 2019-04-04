@@ -64,16 +64,16 @@ function getExpDateTime(sheet, row) {
     date = zenToHan(date);
     var dateInfo = date.match(/\d+/g);
     if (dateInfo.length == 3) { //年月日なら
-      from.setFullYear(dateInfo[0], dateInfo[1], dateInfo[2]);
+      from.setFullYear(dateInfo[0], dateInfo[1] - 1, dateInfo[2]);
     } else if (dateInfo.length == 2) { //月日なら
-      from.setMonth(dateInfo[0], dateInfo[1]);
+      from.setMonth(dateInfo[0] - 1, dateInfo[1]);
     } else if (dateInfo.length == 1) { //日なら
       from.setDate(dateInfo[0]);
     }
     var to = new Date(from);
     var time = sheet.getRange(row, colExpTime).getValue(); // この段階では文字列
     time = zenToHan(time);
-    var FromTo = datetime.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
+    var FromTo = time.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
     from.setHours(FromTo[0],FromTo[1]);
     if (FromTo.length == 4) {
       to.setHours(FromTo[2],FromTo[3]);
@@ -249,7 +249,7 @@ function updateCalendar() {
               reserve[i].deleteEvent();
             }
           }
-          if (trigger === 111) {
+          if (trigger === expInfo['finalizeTrigger']) {
             // 変更した行から名前を取得し、"予約完了：参加者名(ふりがな)"の文字列を作る
             if (colParNameKana > 0) {
               var eventTitle = "予約完了:" + participantName +'('+sheet.getRange(activeRow, colParNameKana).getValue()+')';
@@ -439,14 +439,16 @@ function setDefault() {
                           ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
                           ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
                           ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
+                          ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の数字・文字列に変更してください'],
                           ['参加者名の列番号','colParName', 2, note2],
-                          ['ふりがなの列番号','colParNameKana', 3, note2 + 'もし利用しない場合は-1を入力してください。'],
-                          ['参加者アドレスの列番号','colAddress',lastCol - 6, note2]];
+                          ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']];
 
-    var verChoice = [['希望日の列番号','colExpDate', lastCol - 5, note2],
-                     ['希望時間の列番号','colExpTime', lastCol - 4, note2]];
+    var verChoice = [['参加者アドレスの列番号','colAddress', lastCol - 7, note2],
+                     ['希望日の列番号','colExpDate', lastCol - 6, note2],
+                     ['希望時間の列番号','colExpTime', lastCol - 5, note2]];
 
-    var verAnswer = [['希望日時の列番号','colExpDate', lastCol - 5, note2]];
+    var verAnswer = [['参加者アドレスの列番号','colAddress', lastCol - 6, note2],
+                     ['希望日時の列番号','colExpDate', lastCol - 5, note2]];
 
     if (type == 1) {
       defaultExpInfo = defaultExpInfo.concat(verAnswer)

@@ -209,8 +209,10 @@ function sendToCalendar() {
       cal.createEvent(eventTitle, from, to); //仮予約情報をカレンダーに作成
     }
     var ParticipantEmail = sheet.getRange(numRow, colAddress).getValue();
-    sendEmail(participantName, ParticipantEmail, from, to, trigger, numRow);
-    modifySheet(sheet, numRow, [colStatus, colMailed, colRemindDate, colReminded],  values);
+    if (!detectDefault()) {
+      sendEmail(participantName, ParticipantEmail, from, to, trigger, numRow);
+      modifySheet(sheet, numRow, [colStatus, colMailed, colRemindDate, colReminded],  values);
+    }
   } catch(err) {
     //実行に失敗した時に通知
     var fb = "[line " + err.lineNumber + "] " +err.message;
@@ -340,6 +342,23 @@ function detectUpdate() {
   }
 }
 
+function detectDefault(){
+  var defName = false; if (expInfo['experimenterName'] == '実験太郎') defName = true;
+  var defPhone = false;if (expInfo['experimenterPhone'] == 'xxx-xxx-xxx') defPhone = true;
+  var defPlace = false;if (expInfo['experimentRoom'] == '実施場所') defPlace = true;
+  var title = "設定がデフォルトのままです"
+  var fb = "以下の重要な設定がデフォルトのままだったので，参加希望者への予約確認メールの送信を中止しました。\n\n"
+  if (defName || defPhone || defPlace) {
+    if (defName) fb += "実験者名\n";
+    if (defPhone) fb += "電話番号\n";
+    if (defPlace) fb += "実施場所\n";
+    fb += "\n変更後，再度参加者応募のテストをして，予約確認のメールが送信されるかどうか，およびその本文が適切かどうかを確認してください。"
+    MailApp.sendEmail(expInfo['experimenterMailAddress'], title, fb);
+    return true;
+  }
+  return false;
+}
+
 // 設定用のシートおよびその見本を最初に作る関数
 function setting(){
   buttons = Browser.Buttons.OK_CANCEL;
@@ -430,7 +449,7 @@ function setDefault() {
     var note2 = '「フォームの回答」の列番号と一致しているか確認してください（A列が1）';
     var defaultExpInfo = [['設定項目','メール本文内でのキー','値','備考'],
                           ['実験責任者名','experimenterName','実験太郎', "実験責任者の名前を記入してください"],
-                          ['実験責任者のGmailアドレス','experimenterMailAddress','hogehoge@gmail.com', "実験用のGmailアドレスを記入してください"],
+                          ['実験責任者のGmailアドレス','experimenterMailAddress', Session.getActiveUser().getEmail(), "実験用のGmailアドレスを記入してください"],
                           ['実験責任者の電話番号','experimenterPhone','xxx-xxx-xxx', "電話番号を記入してください"],
                           ['実験の実施場所','experimentRoom','実施場所',"実験の実施場所を記入してください"],
                           ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],

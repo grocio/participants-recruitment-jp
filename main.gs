@@ -52,15 +52,16 @@ function getExpInfo() {
 }
 
 // 希望日時を取得しdate型に変換する関数
-function getExpDateTime(sheet, row) {
+function getExpDateTime(array) {
   if (type == 1) {
-    var from = new Date(sheet.getRange(row, colExpDate).getValue());
+    var from = new Date(array[colExpDate - 1]);
     var to = new Date(from);
     var expLength = expInfo['experimentLength'];
     to.setMinutes(from.getMinutes() + expLength);
   } else {
+    // 日付の操作
     var from = new Date();
-    var date = sheet.getRange(row, colExpDate).getValue();
+    var date = array[colExpDate - 1];
     date = zenToHan(date);
     var dateInfo = date.match(/\d+/g);
     if (dateInfo.length == 3) { //年月日なら
@@ -71,7 +72,8 @@ function getExpDateTime(sheet, row) {
       from.setDate(dateInfo[0]);
     }
     var to = new Date(from);
-    var time = sheet.getRange(row, colExpTime).getValue(); // この段階では文字列
+    // 時間の操作
+    var time = array[colExpTime - 1]; // この段階では文字列
     time = zenToHan(time);
     var FromTo = time.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
     from.setHours(FromTo[0],FromTo[1]);
@@ -97,12 +99,10 @@ function makeMailBody(body) {
 // スプレッドシートからメールのテンプレートを取得する関数
 function getTemplate(trigger, time) {
   var sheet = ss.getSheetByName('テンプレート');
-  var lastCol = sheet.getLastColumn();
-  var lastRow = sheet.getLastRow();
-  var contents = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  var contents = sheet.getDataRange().getValues();
   var contentsDict = {};
   for (var i = 0; i < contents.length; i++){
-    if (contents[i][0] === trigger){
+    if (contents[i][0] == trigger){
       contentsDict['subject'] = contents[i][2];
       var changeByDay = contents[i][1];
       if (changeByDay === 1 && (time.getDay()==0 || time.getDay()==6)){ //もし週末なら
@@ -179,16 +179,17 @@ function getbccAddresses(row) {
 }
 
 //仮予約があった際に、カレンダーに書き込む関数
-function sendToCalendar() {
+function sendToCalendar(e) {
   var sheet = ss.getActiveSheet();
   try{
     //実験情報の取得
-    var numRow = sheet.getActiveRange().getRow() // 新規仮予約された行番号を取得。active行だけを取得するようにする。手動で参加者情報を追加しても対応できる。
-    var participantName = sheet.getRange(numRow, colParName).getValue(); //新規仮予約された行から名前を取得し、"仮予約：参加者名"の文字列を作る
+    var submittedInfo = e.values;
+    var participantName = submittedInfo[colParName - 1];
+
     var eventTitle = "仮予約:" + participantName;
     //重複の確認
     var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //仮予約を記載するカレンダーを取得
-    var expDT = getExpDateTime(sheet, numRow);
+    var expDT = getExpDateTime(submittedInfo);
     var from = expDT['from']; //仮予約の開始時間を取得
     var to = expDT['to'];//仮予約の開始時間から終了時間を設定
     var openTime = expInfo['openTime'];
@@ -208,8 +209,9 @@ function sendToCalendar() {
       var values = ['', '', '', ''];
       cal.createEvent(eventTitle, from, to); //仮予約情報をカレンダーに作成
     }
-    var ParticipantEmail = sheet.getRange(numRow, colAddress).getValue();
+    var ParticipantEmail = submittedInfo[colAddress - 1];
     if (!detectDefault()) {
+      var numRow = e.range.getRow();
       sendEmail(participantName, ParticipantEmail, from, to, trigger, numRow);
       modifySheet(sheet, numRow, [colStatus, colMailed, colRemindDate, colReminded],  values);
     }
@@ -222,28 +224,29 @@ function sendToCalendar() {
 }
 
 // スプレッドシート上で予約を完了させ、メール送信及びカレンダーへの書き込みを行う関数
-function updateCalendar() {
+function updateCalendar(e) {
   try {
     //有効なGooglesプレッドシートを開く
-    var sheet = ss.getActiveSheet();
+    var edRange = e.range
+    var sheet = edRange.getSheet();
     if (sheet.getSheetId() === ss.getSheets()[0].getSheetId()){ //設定用のシートをいじっても何も起きないようにする
       //アクティブセル（値の変更があったセル）を取得
-      var activeCell = sheet.getActiveCell();
-      var activeRow = activeCell.getRow();
-
-      var expDT = getExpDateTime(sheet, activeRow);
+      var edRowNum = edRange.getRow();
+      var lastCol = sheet.getLastColumn();
+      var edRowVals = sheet.getRange(edRowNum, 1, 1, lastCol).getValues()[0];
+      var expDT = getExpDateTime(edRowVals);
       var from = expDT['from']; //予約の開始時間を取得
       var to = expDT['to'];//予約の開始時間から終了時間を設定
 
       //予約された日時（見やすい形式）
-      var participantName = sheet.getRange(activeRow, colParName).getValue();
-      var activeColumn = activeCell.getColumn();
-      var activeColname = sheet.getRange(1,activeColumn).getValue();
-      var trigger = activeCell.getValue();
+      var participantName = edRowVals[colParName - 1];
+      var edColNum = edRange.getColumn();
+      var edColName = sheet.getRange(1, edColNum).getValue();
+      var trigger = e.value;//activeCell.getValue();
       var regex = /[0-9]+/;
       if (regex.test(trigger)){
         var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //予約を記載するカレンダーを取得
-        if (activeColname === '予約ステータス' && sheet.getRange(activeRow,activeColumn).getValue() !== 1){
+        if (edColName === '予約ステータス' && sheet.getRange(edRowNum, edColNum + 1).getValue() !== 1){
           // まず予約イベントを削除する
           var reserve = cal.getEvents(from, to);
           for (var i = 0; i < reserve.length; i++) {
@@ -251,10 +254,10 @@ function updateCalendar() {
               reserve[i].deleteEvent();
             }
           }
-          if (trigger === expInfo['finalizeTrigger']) {
+          if (trigger == expInfo['finalizeTrigger']) {
             // 変更した行から名前を取得し、"予約完了：参加者名(ふりがな)"の文字列を作る
             if (colParNameKana > 0) {
-              var eventTitle = "予約完了:" + participantName +'('+sheet.getRange(activeRow, colParNameKana).getValue()+')';
+              var eventTitle = "予約完了:" + participantName +'('+edRowVals[colParNameKana - 1]+')';
             } else {
               var eventTitle = "予約完了:" + participantName;
             }
@@ -277,9 +280,9 @@ function updateCalendar() {
             var values = [1,'N/A','N/A'];
           }
           // メールの送信
-          var ParticipantEmail = sheet.getRange(activeRow, colAddress).getValue();
-          sendEmail(participantName, ParticipantEmail, from, to, trigger, activeRow)
-          modifySheet(sheet, activeRow, [colMailed, colRemindDate, colReminded], values)
+          var ParticipantEmail = edRowVals[colAddress - 1];
+          sendEmail(participantName, ParticipantEmail, from, to, trigger, edRowNum)
+          modifySheet(sheet, edRowNum, [colMailed, colRemindDate, colReminded], values)
         }
       }
     }
@@ -293,7 +296,6 @@ function updateCalendar() {
     }
     Logger.log(fb);
     Browser.msgBox("エラーが発生しました", fb, Browser.Buttons.OK);
-    MailApp.sendEmail(expInfo['experimenterMailAddress'], exp.message, exp.message);
   }
 }
 
@@ -306,16 +308,17 @@ function sendReminders() {
     // スプレッドシートを1列ずつ参照し、該当する被験者を探していく。
     for (var row = 1; row < data.length; row++) { // 0行目は列名
       //ステータスが送信準備になっていることを確認する
-      if (data[row][colReminded - 1] == "送信準備") {
-        var reminder = data[row][colRemindDate - 1];
+      var rowVals = data[row];
+      if (rowVals[colReminded - 1] == "送信準備") {
+        var reminder = rowVals[colRemindDate - 1];
         // もし現在時刻がリマインド日時を過ぎていたならメールを送信
         if ((reminder != "") && (reminder.getTime() <= time)) {
           // メールの本文の内容を作成するための要素を定義
-          var participantName = data[row][colParName - 1]; //被験者の名前
+          var participantName = rowVals[colParName - 1]; //被験者の名前
           //参加者にメールを送る
-          var ParticipantEmail = data[row][colAddress - 1];
+          var ParticipantEmail = rowVals[colAddress - 1];
           var trigger = 'リマインダー';
-          var expDT = getExpDateTime(sheet, row + 1);
+          var expDT = getExpDateTime(rowVals);//getExpDateTime(sheet, row + 1);
           var from = expDT['from'];
           var to = expDT['to'];
           sendEmail(participantName, ParticipantEmail, from, to, trigger, row + 1)
@@ -331,10 +334,10 @@ function sendReminders() {
   }
 }
 
-function detectUpdate() {
-  var sheetID = ss.getActiveSheet().getSheetId();
+function detectUpdate(e) {
+  var sheetID = e.range.getSheet().getSheetId();
   if (sheetID === ss.getSheets()[0].getSheetId()){ //設定用のシートをいじっても何も起きないようにする
-    updateCalendar();
+    updateCalendar(e);
   } else if (sheetID == ss.getSheetByName('設定').getSheetId()) {
     if (expInfo['remindHour'] != 19) {
       updateTriggers();
@@ -439,7 +442,7 @@ function setDefault() {
     } else {
       sheet.getRange(1, colNames[0].length - addColNames[0].length + 1, 1, addColNames[0].length).setValues(addColNames);
     }
-    lastCol = sheet.getLastColumn();
+    var lastCol = sheet.getLastColumn();
     // 設定シート
     var start = new Date();
     formattedStart = myFormatDate(start, 'yyyy/MM/dd');

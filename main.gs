@@ -5,11 +5,12 @@ function init() { // デフォルトの設定を作成する関数
 }
 
 var ss = SpreadsheetApp.getActiveSpreadsheet(); // spreadsheet
+var sheets = ss.getSheets();
 
 try{
-  if (ss.getSheets().length > 1) {
+  if (sheets.length > 1) {
     var expInfo = getExpInfo();
-    var answers = ss.getSheets()[0];
+    var answers = sheets[0];
     var colParName = Number(expInfo['colParName']);
     var colParNameKana = Number(expInfo['colParNameKana']);
     var colCharge = answers.getLastColumn();
@@ -40,13 +41,11 @@ function zenToHan(str) {
 // 実験の設定を取得する関数
 function getExpInfo() {
   var sheet = ss.getSheetByName('設定');
-  var lastCol = sheet.getLastColumn();
-  var lastRow = sheet.getLastRow();
-  var expInfo = sheet.getRange(2, 2, lastRow - 1, 2).getValues();
+  var expInfo = sheet.getDataRange().getValues();//tRange(2, 2, lastRow - 1, 2).getValues();
   var expInfoDict = {};
   // 取得した配列を連想配列に変換する
-  for (var i = 0; i < expInfo.length; i++) {
-    expInfoDict[expInfo[i][0]] = zenToHan(expInfo[i][1]); // 念の為;
+  for (var i = 1; i < expInfo.length; i++) {
+    expInfoDict[expInfo[i][1]] = zenToHan(expInfo[i][2]); // 念の為;
   }
   return expInfoDict;
 }
@@ -133,7 +132,7 @@ function sendEmail(name, address, from, to, trigger, row) {
   var contents = getTemplate(trigger, from);
   var subject = makeMailBody(contents['subject']);
   var body = makeMailBody(contents['body']);
-  var bccAddresses = getbccAddresses(row)
+  var bccAddresses = getbccAddresses(row);
   MailApp.sendEmail(address, subject, body, {bcc: bccAddresses});
 }
 
@@ -145,9 +144,7 @@ function modifySheet(sheet, numRow, columns, values) {
 
 function getMemberInfo() {
   var sheet = ss.getSheetByName('メンバー');
-  var lastCol = sheet.getLastColumn();
-  var lastRow = sheet.getLastRow();
-  var memberInfo = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  var memberInfo = sheet.getDataRange().getValues();
   var memberInfoDict = {};
   // 取得した配列を連想配列に変換する
   for (var i = 0; i < memberInfo.length; i++) {
@@ -241,12 +238,11 @@ function updateCalendar(e) {
       //予約された日時（見やすい形式）
       var participantName = edRowVals[colParName - 1];
       var edColNum = edRange.getColumn();
-      var edColName = sheet.getRange(1, edColNum).getValue();
-      var trigger = e.value;//activeCell.getValue();
+      var trigger = e.value;
       var regex = /[0-9]+/;
       if (regex.test(trigger)){
         var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //予約を記載するカレンダーを取得
-        if (edColName === '予約ステータス' && sheet.getRange(edRowNum, edColNum + 1).getValue() !== 1){
+        if (edColNum === colStatus && edRowVals[edColNum] !== 1){
           // まず予約イベントを削除する
           var reserve = cal.getEvents(from, to);
           for (var i = 0; i < reserve.length; i++) {
@@ -366,7 +362,6 @@ function detectDefault(){
 function setting(){
   buttons = Browser.Buttons.OK_CANCEL;
   start = true;
-  var sheets = ss.getSheets();
   if (sheets.length > 1) {
     msg = "一度設定を行ったことがあるようです（シートが2枚以上あります）。\\nもう一度初期化を行いますか？\\n"
     msg += "フォームの回答が一番初めのシートでないとこれまでの情報が失われる場合があります。"
@@ -422,7 +417,6 @@ function updateTriggers() {
 
 function setDefault() {
   try {
-    var sheets = ss.getSheets();
     var addNewCol = true;
     if (sheets.length > 2) {
       for (i = 1; i < sheets.length; i++) {
@@ -434,7 +428,7 @@ function setDefault() {
     ss.insertSheet('設定');
     ss.insertSheet('テンプレート');
     ss.insertSheet('メンバー');
-    var colNames = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues();
+    var colNames = sheet.getDataRange().getValues();
     var addColNames = [['予約ステータス', '連絡したか', 'リマインド日時', 'リマインドしたか', '担当']];
     if (addNewCol) {
       var newColNames = [colNames[0].concat(addColNames[0])];

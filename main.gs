@@ -10,6 +10,7 @@ var sheets = ss.getSheets();
 try{
   if (sheets.length > 1) {
     var expInfo = getExpInfo();
+    var templates = getTemplate();
     var answers = sheets[0];
     var colParName = Number(expInfo['colParName']);
     var colParNameKana = Number(expInfo['colParNameKana']);
@@ -25,7 +26,7 @@ try{
     var colAddress = Number(expInfo['colAddress']);
   }
 } catch (err) {
-  Logger.log(err.message);
+  console.log(err.message);
 }
 
 function zenToHan(str) {
@@ -34,7 +35,7 @@ function zenToHan(str) {
       return String.fromCharCode(s.charCodeAt(0) - 65248); // 10進数の場合
     });
   } else {
-    return str
+    return str;
   }
 }
 
@@ -70,6 +71,7 @@ function getExpDateTime(array) {
     } else if (dateInfo.length == 1) { //日なら
       from.setDate(dateInfo[0]);
     }
+    from.setSeconds(0,0);
     var to = new Date(from);
     // 時間の操作
     var time = array[colExpTime - 1]; // この段階では文字列
@@ -96,23 +98,32 @@ function makeMailBody(body) {
 }
 
 // スプレッドシートからメールのテンプレートを取得する関数
-function getTemplate(trigger, time) {
+function getTemplate() {
   var sheet = ss.getSheetByName('テンプレート');
   var contents = sheet.getDataRange().getValues();
-  var contentsDict = {};
+  var templateDict = {};
   for (var i = 0; i < contents.length; i++){
-    if (contents[i][0] == trigger){
-      contentsDict['subject'] = contents[i][2];
-      var changeByDay = contents[i][1];
-      if (changeByDay === 1 && (time.getDay()==0 || time.getDay()==6)){ //もし週末なら
-        contentsDict['body'] = contents[i][4];
-      }
-      else{
-        contentsDict['body'] = contents[i][3];
-      }
-    }
+    var mailContents = {};
+    mailContents['changeByDay'] = contents[i][1];
+    mailContents['subject'] = contents[i][2];
+    mailContents['bodywd'] = contents[i][3];
+    mailContents['bodywe'] = contents[i][4];
+    templateDict[contents[i][0]] = mailContents;
   }
-  return contentsDict;
+  return templateDict;
+}
+
+function getMailContents(trigger, time) {
+  var useTemplate = templates[trigger];
+  var mailContents = {};
+  mailContents['subject'] = useTemplate['subject'];
+  if (useTemplate['changeByDay'] == 1 && (time.getDay()==0 || time.getDay()==6)){ //もし週末なら
+    mailContents['body'] = useTemplate['bodywe'];
+  }
+  else{
+    mailContents['body'] = useTemplate['bodywd'];
+  }
+  return mailContents;
 }
 
 function myFormatDate(datetime, pattern) {
@@ -120,7 +131,7 @@ function myFormatDate(datetime, pattern) {
 }
 
 // mailの内容を作成する関数
-function sendEmail(name, address, from, to, trigger, row) {
+function sendEmail(name, address, from, to, trigger, chargeID) {
   //メールに記載する、予約日時の変数を作成する
   var yobi = new Array("日", "月", "火", "水", "木", "金", "土")[from.getDay()];
   expInfo['participantName'] = name;
@@ -129,10 +140,10 @@ function sendEmail(name, address, from, to, trigger, row) {
   expInfo['toWhen'] = myFormatDate(to, 'HH:mm');
   expInfo['openDate'] = myFormatDate(expInfo['openDate'], 'yyyy/MM/dd');
   expInfo['closeDate'] = myFormatDate(expInfo['closeDate'], 'yyyy/MM/dd');
-  var contents = getTemplate(trigger, from);
+  var contents = getMailContents(trigger, from);
   var subject = makeMailBody(contents['subject']);
   var body = makeMailBody(contents['body']);
-  var bccAddresses = getbccAddresses(row);
+  var bccAddresses = getbccAddresses(chargeID);
   MailApp.sendEmail(address, subject, body, {bcc: bccAddresses});
 }
 
@@ -155,10 +166,10 @@ function getMemberInfo() {
 }
 
 // memberシートからbccアドレスを追加する関数
-function getbccAddresses(row) {
-  var activeSheet = ss.getActiveSheet();
+function getbccAddresses(charges) {
+  // var activeSheet = ss.getActiveSheet();
   var memberInfo = getMemberInfo();
-  var charges = activeSheet.getRange(row, colCharge).getValue();
+  // var charges = activeSheet.getRange(row, colCharge).getValue();
   charges = zenToHan(charges);
   var bccAddress = [expInfo['experimenterMailAddress']];
   if (typeof charges == 'number') {// 一人だけが指定されている場合
@@ -175,6 +186,23 @@ function getbccAddresses(row) {
   return bccAddress.join(',');
 }
 
+function detectDefault(){
+  var defName = false; if (expInfo['experimenterName'] == '実験太郎') defName = true;
+  var defPhone = false;if (expInfo['experimenterPhone'] == 'xxx-xxx-xxx') defPhone = true;
+  var defPlace = false;if (expInfo['experimentRoom'] == '実施場所') defPlace = true;
+  var title = "設定がデフォルトのままです"
+  var fb = "以下の重要な設定がデフォルトのままだったので，参加希望者への予約確認メールの送信を中止しました。\n\n"
+  if (defName || defPhone || defPlace) {
+    if (defName) fb += "実験者名\n";
+    if (defPhone) fb += "電話番号\n";
+    if (defPlace) fb += "実施場所\n";
+    fb += "\n変更後，再度参加者応募のテストをして，予約確認のメールが送信されるかどうか，およびその本文が適切かどうかを確認してください。"
+    MailApp.sendEmail(expInfo['experimenterMailAddress'], title, fb);
+    return true;
+  }
+  return false;
+}
+
 //仮予約があった際に、カレンダーに書き込む関数
 function sendToCalendar(e) {
   var sheet = ss.getActiveSheet();
@@ -183,9 +211,7 @@ function sendToCalendar(e) {
     var submittedInfo = e.values;
     var participantName = submittedInfo[colParName - 1];
 
-    var eventTitle = "仮予約:" + participantName;
     //重複の確認
-    var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //仮予約を記載するカレンダーを取得
     var expDT = getExpDateTime(submittedInfo);
     var from = expDT['from']; //仮予約の開始時間を取得
     var to = expDT['to'];//仮予約の開始時間から終了時間を設定
@@ -194,103 +220,100 @@ function sendToCalendar(e) {
     var openDate = expInfo['openDate'];
     var closeDate = expInfo['closeDate'];
 
+    var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //仮予約を記載するカレンダーを取得
     var allEvents = cal.getEvents(from, to);
+
     if (allEvents.length > 0) {
       var trigger = '重複';
       var values = [trigger, 1, 'N/A', 'N/A'];
-    } else if (from.getHours() < openTime || to.getHours() >= closeTime || from < openDate || from > closeDate) {
+    } else if (from.getHours() < openTime || to.getHours() > closeTime || from < openDate || from > closeDate) {
       var trigger = '時間外';
       var values = [trigger, 1, 'N/A', 'N/A'];
     } else {
       var trigger = '仮予約'
       var values = ['', '', '', ''];
+      var eventTitle = "仮予約:" + participantName;
       cal.createEvent(eventTitle, from, to); //仮予約情報をカレンダーに作成
     }
     var ParticipantEmail = submittedInfo[colAddress - 1];
     if (!detectDefault()) {
       var numRow = e.range.getRow();
-      sendEmail(participantName, ParticipantEmail, from, to, trigger, numRow);
-      modifySheet(sheet, numRow, [colStatus, colMailed, colRemindDate, colReminded],  values);
+      sendEmail(participantName, ParticipantEmail, from, to, trigger, false);
+      modifySheet(sheet, numRow, [colStatus, colMailed, colRemindDate, colReminded], values);
     }
+    console.log('Success!');
   } catch(err) {
     //実行に失敗した時に通知
     var fb = "[line " + err.lineNumber + "] " +err.message;
-    Logger.log(fb);
+    console.log(fb);
     MailApp.sendEmail(expInfo['experimenterMailAddress'], "エラーが発生しました", fb);
   }
 }
 
+function updateCalendar(prevTitle, newTitle, from, to, trigger) {
+  var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //予約を記載するカレンダーを取得
+  // まず予約イベントを削除する
+  var reserve = cal.getEvents(from, to);
+  for (var i = 0; i < reserve.length; i++) {
+    if (reserve[i].getTitle() == prevTitle) {
+      reserve[i].deleteEvent();
+    }
+  }
+  if (trigger == expInfo['finalizeTrigger']) {
+    cal.createEvent(newTitle, from, to); //予約確定情報をカレンダーに追加
+  }
+}
+
+function setReminder(from, to, trigger) {
+  if (trigger == expInfo['finalizeTrigger']) {
+    // リマインダーのための設定をする
+    var remindDate = new Date(from)
+    remindDate.setDate(from.getDate() - 1); //remindDateの時刻を予約時間の1日前に設定する。
+    var time = new Date(); //現在時刻の取得
+    time.setHours(19); //19時に設定
+    // 予約を完了させた日の19時にremindDateの時刻が達していない場合、"送信準備"というコードを指定のセルに入力する
+    if (remindDate > time) {
+      var reminderStatus = "送信準備";
+    } else {
+      var reminderStatus = "直前のため省略";
+    }
+    var values = [1, remindDate, reminderStatus];
+  } else { // triggerが指定のトリガー以外のとき
+    var values = [1,'N/A','N/A'];
+  }
+  return values;
+}
+
 // スプレッドシート上で予約を完了させ、メール送信及びカレンダーへの書き込みを行う関数
-function updateCalendar(e) {
+function updateStatus(array) {
   try {
-    //有効なGooglesプレッドシートを開く
-    var edRange = e.range
-    var sheet = edRange.getSheet();
-    if (sheet.getSheetId() === ss.getSheets()[0].getSheetId()){ //設定用のシートをいじっても何も起きないようにする
-      //アクティブセル（値の変更があったセル）を取得
-      var edRowNum = edRange.getRow();
-      var lastCol = sheet.getLastColumn();
-      var edRowVals = sheet.getRange(edRowNum, 1, 1, lastCol).getValues()[0];
-      var expDT = getExpDateTime(edRowVals);
+    //予約された日時（見やすい形式）
+    var prepTriggers = Object.keys(templates);
+    var trigger = String(array[colStatus - 1]);
+    var same = function(value) {return value == trigger};
+    if (prepTriggers.some(same)) {
+      var participantName = array[colParName - 1];
+      var expDT = getExpDateTime(array);
       var from = expDT['from']; //予約の開始時間を取得
       var to = expDT['to'];//予約の開始時間から終了時間を設定
-
-      //予約された日時（見やすい形式）
-      var participantName = edRowVals[colParName - 1];
-      var edColNum = edRange.getColumn();
-      var trigger = e.value;
-      var regex = /[0-9]+/;
-      if (regex.test(trigger)){
-        var cal = CalendarApp.getCalendarById(expInfo['experimenterMailAddress']); //予約を記載するカレンダーを取得
-        if (edColNum === colStatus && edRowVals[edColNum] !== 1){
-          // まず予約イベントを削除する
-          var reserve = cal.getEvents(from, to);
-          for (var i = 0; i < reserve.length; i++) {
-            if (reserve[i].getTitle() == "仮予約:" + participantName) {
-              reserve[i].deleteEvent();
-            }
-          }
-          if (trigger == expInfo['finalizeTrigger']) {
-            // 変更した行から名前を取得し、"予約完了：参加者名(ふりがな)"の文字列を作る
-            if (colParNameKana > 0) {
-              var eventTitle = "予約完了:" + participantName +'('+edRowVals[colParNameKana - 1]+')';
-            } else {
-              var eventTitle = "予約完了:" + participantName;
-            }
-            cal.createEvent(eventTitle, from, to); //予約確定情報をカレンダーに追加
-            // リマインダーのための設定をする
-            var remindDate = new Date(from)
-            remindDate.setDate(from.getDate() - 1); //remindDateの時刻を予約時間の1日前に設定する。
-            var time = new Date(); //現在時刻の取得
-            time.setHours(19); //19時に設定
-            // 予約を完了させた日の19時にremindDateの時刻が達していない場合、"送信準備"というコードを指定のセルに入力する
-            if (remindDate > time) {
-              var reminderStatus = "送信準備";
-            } else {
-              var reminderStatus = "直前のため省略";
-            }
-            var values = [1, remindDate, reminderStatus];
-          }
-          // triggerが111以外のとき
-          else {
-            var values = [1,'N/A','N/A'];
-          }
-          // メールの送信
-          var ParticipantEmail = edRowVals[colAddress - 1];
-          sendEmail(participantName, ParticipantEmail, from, to, trigger, edRowNum)
-          modifySheet(sheet, edRowNum, [colMailed, colRemindDate, colReminded], values)
-        }
+      var prevTitle = "仮予約:" + participantName;
+      if (colParNameKana > 0) {
+        var newTitle = "予約完了:" + participantName +'('+array[colParNameKana - 1]+')';
+      } else {
+        var newTitle = "予約完了:" + participantName;
       }
+      updateCalendar(prevTitle, newTitle, from, to, trigger);
+      // メールの送信
+      var ParticipantEmail = array[colAddress - 1];
+      sendEmail(participantName, ParticipantEmail, from, to, trigger, array[colCharge - 1]);
+      return setReminder(from, to, trigger);
+    } else {
+      return ['','',''];
     }
   } catch(err) {
     //実行に失敗した時に通知
     var fb = "[line " + err.lineNumber + "] " +err.message;
-    if (expInfo['experimenterMailAddress'] == "hogehoge@gmail.com") {
-      fb += "\\n実験者のアドレスがデフォルトのままです。"
-    } else if (err.message == "予定の開始日時は終了日時より前にしてください。") {
-      fb += "\\nバージョン情報が適切でないかもしれません。\\nコード1行目のtypeが適切な数字かどうか確認してください。"
-    }
-    Logger.log(fb);
+    console.log(fb);
     Browser.msgBox("エラーが発生しました", fb, Browser.Buttons.OK);
   }
 }
@@ -317,23 +340,60 @@ function sendReminders() {
           var expDT = getExpDateTime(rowVals);//getExpDateTime(sheet, row + 1);
           var from = expDT['from'];
           var to = expDT['to'];
-          sendEmail(participantName, ParticipantEmail, from, to, trigger, row + 1)
+          sendEmail(participantName, ParticipantEmail, from, to, trigger, rowVals[colCharge - 1])
           modifySheet(sheet, row + 1, [colReminded], ['送信済み']);
+          console.log('Success!');
         }
       }
     }
   } catch (err) {
     //実行に失敗した時に通知
     var fb = "[line " + err.lineNumber + "] " +err.message;
-    Logger.log(fb);
+    console.log(fb);
     MailApp.sendEmail(expInfo['experimenterMailAddress'], "エラーが発生しました", fb);
   }
 }
 
-function detectUpdate(e) {
-  var sheetID = e.range.getSheet().getSheetId();
-  if (sheetID === ss.getSheets()[0].getSheetId()){ //設定用のシートをいじっても何も起きないようにする
-    updateCalendar(e);
+function updateTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    // sendRemindersのトリガーだけを削除する
+    if (triggers[i].getEventType() == ScriptApp.EventType.CLOCK) {
+      ScriptApp.deleteTrigger(triggers[i]);
+      ScriptApp.newTrigger('sendReminders').timeBased().atHour(expInfo['remindHour']).nearMinute(30).everyDays(1).create();
+    }
+  }
+}
+
+function onFormSubmitted(e) {
+  // 実際の回答に続けて値のない回答が送られることがあるので以下のif文で回避
+  if (e.values[colAddress - 1].length > 0){
+    sendToCalendar(e);
+  } else {
+    console.log(e.values);
+  }
+}
+
+function onEdited(e) {
+  var edRange = e.range
+  var edSheet = edRange.getSheet();
+  var edSheetID = edSheet.getSheetId();
+  if (edSheetID === ss.getSheets()[0].getSheetId()) {
+    var edValues = edRange.getValues();
+    var edFirstRowNum = edRange.getRow();
+    var edColNum = edRange.getColumn();
+    var lastCol = edSheet.getLastColumn();
+    if (edColNum === colStatus) {
+      for (var i = 0; i < edValues.length; i++){
+        var edRowNum = edFirstRowNum + i;
+        var edRowVals = edSheet.getRange(edRowNum, 1, 1, lastCol).getValues()[0];
+        if (edRowVals[colMailed - 1] !== 1) {
+          var values = updateStatus(edRowVals);
+          modifySheet(edSheet, edRowNum, [colMailed, colRemindDate, colReminded], values);
+          console.log('Success!');
+        }
+      }
+    }
   } else if (sheetID == ss.getSheetByName('設定').getSheetId()) {
     if (expInfo['remindHour'] != 19) {
       updateTriggers();
@@ -341,21 +401,14 @@ function detectUpdate(e) {
   }
 }
 
-function detectDefault(){
-  var defName = false; if (expInfo['experimenterName'] == '実験太郎') defName = true;
-  var defPhone = false;if (expInfo['experimenterPhone'] == 'xxx-xxx-xxx') defPhone = true;
-  var defPlace = false;if (expInfo['experimentRoom'] == '実施場所') defPlace = true;
-  var title = "設定がデフォルトのままです"
-  var fb = "以下の重要な設定がデフォルトのままだったので，参加希望者への予約確認メールの送信を中止しました。\n\n"
-  if (defName || defPhone || defPlace) {
-    if (defName) fb += "実験者名\n";
-    if (defPhone) fb += "電話番号\n";
-    if (defPlace) fb += "実施場所\n";
-    fb += "\n変更後，再度参加者応募のテストをして，予約確認のメールが送信されるかどうか，およびその本文が適切かどうかを確認してください。"
-    MailApp.sendEmail(expInfo['experimenterMailAddress'], title, fb);
-    return true;
+function setTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
   }
-  return false;
+  ScriptApp.newTrigger('onFormSubmitted').forSpreadsheet(ss).onFormSubmit().create();
+  ScriptApp.newTrigger('onEdited').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('sendReminders').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
 }
 
 // 設定用のシートおよびその見本を最初に作る関数
@@ -391,27 +444,6 @@ function setting(){
     Browser.msgBox("設定の初期化", msg, Browser.Buttons.OK);
   } else {
     Browser.msgBox("設定の初期化", "初期化はキャンセルされました", Browser.Buttons.OK);
-  }
-}
-
-function setTriggers() {
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    ScriptApp.deleteTrigger(triggers[i]);
-  }
-  ScriptApp.newTrigger('sendToCalendar').forSpreadsheet(ss).onFormSubmit().create();
-  ScriptApp.newTrigger('detectUpdate').forSpreadsheet(ss).onEdit().create();
-  ScriptApp.newTrigger('sendReminders').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
-}
-
-function updateTriggers() {
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    // sendRemindersのトリガーだけを削除する
-    if (triggers[i].getEventType() == ScriptApp.EventType.CLOCK) {
-      ScriptApp.deleteTrigger(triggers[i]);
-      ScriptApp.newTrigger('sendReminders').timeBased().atHour(expInfo['remindHour']).nearMinute(30).everyDays(1).create();
-    }
   }
 }
 

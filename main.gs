@@ -375,7 +375,7 @@ function onFormSubmitted(e) {
 }
 
 function onEdited(e) {
-  var edRange = e.range
+  var edRange = e.range;
   var edSheet = edRange.getSheet();
   var edSheetID = edSheet.getSheetId();
   if (edSheetID === ss.getSheets()[0].getSheetId()) {

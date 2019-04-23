@@ -29,8 +29,14 @@ try{
   console.log(err.message);
 }
 
+// https://qiita.com/Layzie/items/465e715dae14e2f601de より
+function is(type, obj) {
+  var clas = Object.prototype.toString.call(obj).slice(8, -1);
+  return obj !== undefined && obj !== null && clas === type;
+}
+
 function zenToHan(str) {
-  if (typeof str == "string") {
+  if (is('String', str)) {
     return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) { // 全角を半角に変換
       return String.fromCharCode(s.charCodeAt(0) - 65248); // 10進数の場合
     });
@@ -127,7 +133,10 @@ function getMailContents(trigger, time) {
 }
 
 function myFormatDate(datetime, pattern) {
-  return Utilities.formatDate(datetime, 'JST', pattern);
+  if (is('Date', datetime)) {
+    return Utilities.formatDate(datetime, 'JST', pattern);
+  }
+  return datetime;
 }
 
 // mailの内容を作成する関数
@@ -172,9 +181,9 @@ function getbccAddresses(charges) {
   // var charges = activeSheet.getRange(row, colCharge).getValue();
   charges = zenToHan(charges);
   var bccAddress = [expInfo['experimenterMailAddress']];
-  if (typeof charges == 'number') {// 一人だけが指定されている場合
+  if (is('Number', charges)) {// 一人だけが指定されている場合
     bccAddress.push(memberInfo[charges]);
-  } else if (typeof charges == 'string') {// 複数人が指定されている場合
+  } else if (is('String', charges)) {// 複数人が指定されている場合
     if (charges.length > 0) {
       var chargeIDs = charges.match(/\d+/g);
       for (var i = 0; i < chargeIDs.length; i++) {

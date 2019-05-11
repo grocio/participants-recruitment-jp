@@ -81,10 +81,25 @@ function getSetting(){
     var settingObj = JSON.parse(cacheJson);
     // parseしたままだと以下の2つがstringのままで機能しない
     settingObj.config.openDate = new Date(settingObj.config.openDate);
+    if (settingObj.config.openDate < new Date()) {
+      settingObj.config.openDate = new Date();
+    }
     settingObj.config.closeDate = new Date(settingObj.config.closeDate);
+    if (settingObj.config.closeDate < new Date()) {
+      const title = "実験実施期間を修正してください";
+      const text = "実験実施期間が過去になっています。早急に修正してください。";
+      console.log(text);
+      MailApp.sendEmail(settingObj.config.experimenterMailAddress, title, text);
+    }
   }
   return settingObj;
 }
+
+// 実験期間に合わせてフォームの日にちの選択肢が変わるようにしたい
+// function modifyFormItems() {
+//   linkedFormURL = SS.getFormUrl();
+//   linkedForm = FormApp.getByUrl(linkedFormURL);
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // メインの関数群で利用されるミニ関数

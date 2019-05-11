@@ -77,10 +77,13 @@ function getSetting(){
       var key = NAME_TO_KEY[name];
       settingObj[key] = getInfo(name);
     }
-    return settingObj;
   } else {
-    return JSON.parse(cacheJson);
+    var settingObj = JSON.parse(cacheJson);
+    // parseしたままだと以下の2つがstringのままで機能しない
+    settingObj.config.openDate = new Date(settingObj.config.openDate);
+    settingObj.config.closeDate = new Date(settingObj.config.closeDate);
   }
+  return settingObj;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

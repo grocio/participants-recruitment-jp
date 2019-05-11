@@ -537,7 +537,7 @@ function setDefault() {
       '心理学実験実施責任者のexperimenterNameです。',
       'この度は心理学実験への応募ありがとうございました。',
       '予約の確認メールを自動で送信しております。\n',
-      'expDatefromWhen〜toWhen',
+      'expDate fromWhen〜toWhen',
       'で予約を受け付けました（まだ確定はしていません)。',
       '後日、予約完了のメールを送信いたします。',
       'もし日時の変更等がある場合は experimenterMailAddress までご連絡ください。',
@@ -551,7 +551,7 @@ function setDefault() {
       '心理学実験実施責任者のexperimenterNameです。',
       'この度は心理学実験への応募ありがとうございました。',
       '申し訳ありませんが、ご希望いただいた',
-      'expDatefromWhen〜toWhen',
+      'expDate fromWhen〜toWhen',
       'は実験実施可能時間（openTime時〜closeTime時）外または、実施期間（openDate〜closeDate）外です。',
       'お手数ですが、もう一度登録し直していただきますようお願いします。\n',
       'experimenterName'
@@ -562,7 +562,7 @@ function setDefault() {
       '心理学実験実施責任者のexperimenterNameです。',
       'この度は心理学実験への応募ありがとうございました。',
       '申し訳ありませんが、ご希望いただいた',
-      'expDatefromWhen〜toWhen',
+      'expDate fromWhen〜toWhen',
       'にはすでに予約（予定）が入っており（タッチの差で他の方が予約をされた可能性もあります）、実験を実施することができません。',
       'お手数ですが、もう一度別の日時で登録し直していただきますようお願いします。\n',
       'experimenterName'
@@ -572,7 +572,7 @@ function setDefault() {
     const weekdayBookingDone = [
       'participantName 様\n',
       'この度は心理学実験への応募ありがとうございました。',
-      'expDatefromWhen〜toWhenの心理学実験の予約が完了しましたのでメールいたします。',
+      'expDate fromWhen〜toWhenの心理学実験の予約が完了しましたのでメールいたします。',
       '場所はexperimentRoomです。当日は直接お越しください。',
       'ご不明な点などありましたら、experimenterMailAddressまでご連絡ください。',
       '当日もよろしくお願いいたします。\n',
@@ -583,7 +583,7 @@ function setDefault() {
     const holidayBookingDone = [
       'participantName 様\n',
       'この度は心理学実験への応募ありがとうございました。',
-      'expDatefromWhen〜toWhenの心理学実験の予約が完了しましたのでメールいたします。',
+      'expDate fromWhen〜toWhenの心理学実験の予約が完了しましたのでメールいたします。',
       '場所はexperimentRoomです。休日は教育学部棟玄関の鍵がかかっており、外から入ることができません。実験開始5分前から玄関前で待機しておりますので、実験開始時間までにお越しください。',
       'ご不明な点などありましたら、experimenterMailAddressまでご連絡ください。',
       '当日もよろしくお願いいたします。\n',

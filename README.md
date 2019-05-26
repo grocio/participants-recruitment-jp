@@ -132,7 +132,7 @@ googleフォームを利用して質問フォームを作成します。
 アンケートの回答があったときや、参加の予約を完了させるときにほぼ自動でメールが送信されるように、スプレッドシートに対して動作するプログラムを導入します。
 
 1. main.gsのコードをコピーして下さい。
-    - [ここ](https://raw.githubusercontent.com/SNishiyama/participants-recruitment-jp/master/main.gs)にアクセスして`crtl-A`および`ctrl-C`（Macなら`command-A`, `command-C`）
+    - [ここ](https://raw.githubusercontent.com/grocio/participants-recruitment-jp/master/main.gs)にアクセスして`crtl-A`および`ctrl-C`（Macなら`command-A`, `command-C`）
 2. 質問フォームの回答が記録されるスプレッドシートを開き、上部のツールバーから`ツール`->`スクリプトエディタ`の順にクリックして下さい。
 3. スクリプトエディタが開かれますので、ここに`main.gs`の内容を貼り付けます。
     - `ctrl-S`（Macなら`command-S`）で保存してください。このとき，プロジェクトの名前を求められるので，適当に決めてください。

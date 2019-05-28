@@ -12,7 +12,7 @@ if (SHEETS.length > 1) {
   var MEMBER_INFO = SETTING.memberInfo;
 }
 
-function init(){
+function init() {
   setting();
 }
 
@@ -68,10 +68,10 @@ function getInfo(sheetName) {
   return infoObj;
 }
 
-function getSetting(){
+function getSetting() {
   const sheetCache = SS.getSheetByName("Cache");
   const cacheJson = sheetCache.getRange(1,1).getValue();
-  if (cacheJson.length < 10){
+  if (cacheJson.length < 10) {
     var settingObj = {};
     for (name in NAME_TO_KEY) {
       var key = NAME_TO_KEY[name];
@@ -86,20 +86,20 @@ function getSetting(){
     }
     settingObj.config.closeDate = new Date(settingObj.config.closeDate);
     if (settingObj.config.closeDate < new Date()) {
-      const title = "実験実施期間を修正してください";
-      const text = "実験実施期間が過去になっています。早急に修正してください。";
-      console.log(text);
-      MailApp.sendEmail(settingObj.config.experimenterMailAddress, title, text);
+      const configTemp = getInfo("設定");
+      if (configTemp.nowExperimenting == 1) {
+        const title = "実験実施期間を修正してください";
+        const SSName = SS.getName();
+        const text = "以下のファイルの実験実施期間が過去になっています。早急に修正してください。\nファイル名: " + SSName +
+                    "\n\nこの通知を切る場合は「設定」シートのnowExperimentingの行を0にしてください";
+        console.log(text);
+        MailApp.sendEmail(settingObj.config.experimenterMailAddress, title, text);
+      }
     }
   }
   return settingObj;
 }
 
-// 実験期間に合わせてフォームの日にちの選択肢が変わるようにしたい
-// function modifyFormItems() {
-//   linkedFormURL = SS.getFormUrl();
-//   linkedForm = FormApp.getByUrl(linkedFormURL);
-// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // メインの関数群で利用されるミニ関数
@@ -159,11 +159,10 @@ function getMailContents(trigger, time) {
 function getBccAddresses(charges) {
   charges = zenToHan(charges);
   const bccArray = [CONFIG.experimenterMailAddress];
-  if (is('Number', charges)) {// 一人だけが指定されている場合
-    bccArray.push(MEMBER_INFO[charges]);
-  } else if (is('String', charges)) {// 複数人が指定されている場合
-    if (charges.length > 0) {
-      const chargeIDs = charges.match(/\d+/g);
+  const strCharges = String(charges);
+  if (strCharges.length > 0) { // 担当が空欄でなければ
+    const chargeIDs = strCharges.match(/\d+/g);
+    if (is("Array", chargeIDs)) {
       for (var i = 0; i < chargeIDs.length; i++) {
         var chargeID = chargeIDs[i];
         bccArray.push(MEMBER_INFO[chargeID]);
@@ -188,6 +187,12 @@ function sendEmail(name, address, from, to, trigger, chargeID) {
   MailApp.sendEmail(address, mail.title, mail.body, {bcc: bccAddresses});
 }
 
+function isFinalizeTrigger(trigger) {
+  const finalizeTriggers = String(CONFIG.finalizeTrigger).match(/\d+/g);
+  const identical = function(value) {return value === trigger};
+  return finalizeTriggers.some(identical);
+}
+
 function updateCalendar(oldEventName, newEventName, from, to, trigger) {
   const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //予約を記載するカレンダーを取得
   // まず予約イベントを削除する
@@ -197,13 +202,13 @@ function updateCalendar(oldEventName, newEventName, from, to, trigger) {
       reserve[i].deleteEvent();
     }
   }
-  if (trigger == CONFIG.finalizeTrigger) {
+  if (isFinalizeTrigger(trigger)) {
     cal.createEvent(newEventName, from, to); //予約確定情報をカレンダーに追加
   }
 }
 
 function setReminder(from, trigger) {
-  if (trigger == CONFIG.finalizeTrigger) {
+  if (isFinalizeTrigger(trigger)) {
     // リマインダーのための設定をする
     const remindDate = new Date(from)
     remindDate.setDate(from.getDate() - 1); //remindDateの時刻を予約時間の1日前に設定する。
@@ -218,7 +223,30 @@ function setReminder(from, trigger) {
   return [1,'N/A','N/A']; // triggerが指定のトリガー以外のとき
 }
 
-function isDefault(){
+// 実験期間に合わせてフォームの日にちの選択肢を変える
+function modifyFormItems() {
+  const linkedFormURL = SS.getFormUrl();
+  const linkedForm = FormApp.openByUrl(linkedFormURL);
+  const items = linkedForm.getItems();
+  const secondLastItem = items[CONFIG.colExpDate - 2];
+  const itemType = secondLastItem.getType();
+  const choices = [];
+  if (itemType == "LIST") {
+    var item = secondLastItem.asListItem();
+    var choiceDay = new Date(CONFIG.openDate);
+    choiceDay.setHours(0,0,0,0);
+    while (true) {
+      choiceDay.setDate(choiceDay.getDate() + 1);
+      var strChoiceDay = fmtDate(choiceDay, "yyyy/MM/dd");
+      var newChoice = item.createChoice(strChoiceDay);
+      choices.push(newChoice);
+      if (choiceDay >= CONFIG.closeDate) break;
+    }
+    item.setChoices(choices);
+  }
+}
+
+function isDefault() {
   const def = {
     Name: false,
     Phone:false,
@@ -275,7 +303,7 @@ function checkAppointment(e) {
       const sheetAnswers = SHEETS[0];
       const numRow = e.range.getRow();
       const colNumArray = [CONFIG.colStatus, CONFIG.colMailed, CONFIG.colRemindDate, CONFIG.colReminded];
-      sendEmail(participantName, participantEmail, expDT.from, expDT.to, trigger, false);
+      sendEmail(participantName, participantEmail, expDT.from, expDT.to, trigger, '');
       // sheetの修正
       sheetAnswers.getRange(numRow, colNumArray[0], 1, colNumArray.length).setValues([values]);
     }
@@ -307,6 +335,8 @@ function finalizeAppointment(array) {
     sendEmail(participantName, ParticipantEmail, expDT.from, expDT.to, trigger, array[CONFIG.colCharge - 1]);
     return setReminder(expDT.from, trigger);
   } else {
+    const message = "予約ステータスに入力された文字列（トリガー）が「テンプレート」に存在しないため，メールの送信等の処理は行われませんでした。"
+    Browser.msgBox("未定義のトリガー", message, Browser.Buttons.OK);
     return ['','',''];
   }
 }
@@ -354,14 +384,14 @@ function updateTriggers() {
     // sendRemindersのトリガーだけを削除する
     if (triggers[i].getEventType() == ScriptApp.EventType.CLOCK) {
       ScriptApp.deleteTrigger(triggers[i]);
-      ScriptApp.newTrigger('sendReminders').timeBased().atHour(CONFIG.remindHour).nearMinute(30).everyDays(1).create();
+      ScriptApp.newTrigger('runTimeBased').timeBased().atHour(CONFIG.remindHour).nearMinute(30).everyDays(1).create();
     }
   }
 }
 
 function onFormSubmitted(e) {
   // 実際の回答に続けて値のない回答が送られることがあるので以下のif文で回避
-  if (e.values[CONFIG.colAddress - 1].length > 0){
+  if (e.values[CONFIG.colAddress - 1].length > 0) {
     checkAppointment(e);
   } else {
     console.log(e.values);
@@ -394,7 +424,7 @@ function onEdited(e) {
       const newInfo = getInfo(edSheetName);
       // 変更を加えたシートだけcacheを変更する
       const cache = {};
-      for (name in NAME_TO_KEY){
+      for (name in NAME_TO_KEY) {
         key = NAME_TO_KEY[name];
         if (name == edSheetName) {
           cache[key] = newInfo;
@@ -419,6 +449,11 @@ function onEdited(e) {
   }
 }
 
+function runTimeBased() {
+  sendReminders();
+  if (TYPE == 2) modifyFormItems();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // 初期設定に関わる関数
 ///////////////////////////////////////////////////////////////////////////////
@@ -430,11 +465,11 @@ function setTriggers() {
   }
   ScriptApp.newTrigger('onFormSubmitted').forSpreadsheet(SS).onFormSubmit().create();
   ScriptApp.newTrigger('onEdited').forSpreadsheet(SS).onEdit().create();
-  ScriptApp.newTrigger('sendReminders').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
+  ScriptApp.newTrigger('runTimeBased').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
 }
 
 // 設定用のシートおよびその見本を最初に作る関数
-function setting(){
+function setting() {
   var buttons = Browser.Buttons.OK_CANCEL;
   var start = true;
   if (SHEETS.length > 1) {
@@ -511,7 +546,8 @@ function setDefault() {
       ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
       ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
       ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
-      ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の数字・文字列に変更してください'],
+      ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の半角数字列に変更してください。複数指定する場合はカンマで区切ってください。'],
+      ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']
     ];

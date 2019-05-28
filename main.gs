@@ -335,6 +335,8 @@ function finalizeAppointment(array) {
     sendEmail(participantName, ParticipantEmail, expDT.from, expDT.to, trigger, array[CONFIG.colCharge - 1]);
     return setReminder(expDT.from, trigger);
   } else {
+    const message = "予約ステータスに入力された文字列（トリガー）が「テンプレート」に存在しないため，メールの送信等の処理は行われませんでした。"
+    Browser.msgBox("未定義のトリガー", message, Browser.Buttons.OK);
     return ['','',''];
   }
 }

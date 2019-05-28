@@ -391,7 +391,7 @@ function updateTriggers() {
 
 function onFormSubmitted(e) {
   // 実際の回答に続けて値のない回答が送られることがあるので以下のif文で回避
-  if (e.values[CONFIG.colAddress - 1].length > 0 ) {
+  if (e.values[CONFIG.colAddress - 1].length > 0) {
     checkAppointment(e);
   } else {
     console.log(e.values);

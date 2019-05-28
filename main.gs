@@ -228,7 +228,7 @@ function modifyFormItems() {
   const linkedFormURL = SS.getFormUrl();
   const linkedForm = FormApp.openByUrl(linkedFormURL);
   const items = linkedForm.getItems();
-  const secondLastItem = items.slice(-2)[0];
+  const secondLastItem = items[CONFIG.colExpDate - 2];
   const itemType = secondLastItem.getType();
   const choices = [];
   if (itemType == "LIST") {
@@ -546,7 +546,7 @@ function setDefault() {
       ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
       ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
       ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
-      ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の数字・文字列に変更してください'],
+      ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の半角数字列に変更してください。複数指定する場合はカンマで区切ってください。'],
       ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']

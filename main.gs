@@ -224,7 +224,7 @@ function setReminder(from, trigger) {
 }
 
 // 実験期間に合わせてフォームの日にちの選択肢を変える
-function modifyFormItems() {
+function modifyFormType2() {
   const linkedFormURL = SS.getFormUrl();
   const linkedForm = FormApp.openByUrl(linkedFormURL);
   const items = linkedForm.getItems();
@@ -233,18 +233,53 @@ function modifyFormItems() {
   const choices = [];
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
-    var choiceDay = new Date(CONFIG.openDate);
-    choiceDay.setHours(0,0,0,0);
+    var choiceDate = new Date(CONFIG.openDate);
+    var lastDate = new Date(CONFIG.closeDate);
+    choiceDate.setHours(0,0,0,0);
     while (true) {
-      choiceDay.setDate(choiceDay.getDate() + 1);
-      var strChoiceDay = fmtDate(choiceDay, "yyyy/MM/dd");
+      choiceDate.setDate(choiceDate.getDate() + 1);
+      var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
       var newChoice = item.createChoice(strChoiceDay);
       choices.push(newChoice);
-      if (choiceDay >= CONFIG.closeDate) break;
+      if (choiceDate >= lastDate) break;
     }
     item.setChoices(choices);
   }
 }
+
+// サイトが無くてもいいように，選択肢がカレンダーを反映するようにする
+// 設定画面で指定したタイムスロットを，実験実施期間の各日付に結合して選択肢を作るようにはした
+// カレンダーの情報を参照してすでに予定があるところを選択肢から除外できるようにはしていない
+// function modifyFormType3() {
+//   const linkedFormURL = SS.getFormUrl();
+//   const linkedForm = FormApp.openByUrl(linkedFormURL);
+//   const items = linkedForm.getItems();
+//   const dateItem = items[CONFIG.colExpDate - 1];
+//   // const itemType = dateItem.getType();
+//   const choices = [];
+//   const expTimes = CONFIG.expTime.match(/\d+:\d+/g);
+//   const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //仮予約を記載するカレンダーを取得
+//   // この辺から修正 20190531
+//   const allEvents = cal.getEvents(CONFIG.openDate, expDT.to); 
+//   if (CONFIG.itemType == "LIST") {
+//     var item = dateItem.asListItem();
+//   } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
+//     var item = dateItem.asMultipleChoiceItem();
+//   }
+//   var choiceDate = new Date(CONFIG.openDate);
+//   choiceDate.setHours(0,0,0,0);
+//   while (true) {
+//     choiceDate.setDate(choiceDate.getDate() + 1);
+//     for (var i = 0; i < expTimes.length; i++) {
+//       var strChoiceDate = fmtDate(choiceDate, "yyyy/MM/dd");
+//       var choiceDateTime = strChoiceDate + expTimes[i];
+//       var newChoice = item.createChoice(choiceDateTime);
+//       choices.push(newChoice);
+//     }
+//     if (choiceDate >= CONFIG.closeDate) break;
+//   }
+//   item.setChoices(choices);
+// }
 
 function isDefault() {
   const def = {
@@ -453,7 +488,7 @@ function onEdited(e) {
 
 function runTimeBased() {
   sendReminders();
-  if (TYPE == 2) modifyFormItems();
+  if (TYPE == 2) modifyFormType2();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

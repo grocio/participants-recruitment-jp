@@ -3,7 +3,6 @@
 An easy way of recruiting participants.
 
 - [Change Log](#change-log)
-
 - [導入](#導入)
 - [運用](#運用)
 - [詳細な設定](#詳細な設定)

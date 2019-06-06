@@ -194,7 +194,7 @@ function isFinalizeTrigger(trigger) {
 }
 
 function updateCalendar(oldEventName, newEventName, from, to, trigger) {
-  const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //予約を記載するカレンダーを取得
+  const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //予約を記載するカレンダーを取得
   // まず予約イベントを削除する
   const reserve = cal.getEvents(from, to);
   for (var i = 0; i < reserve.length; i++) {
@@ -258,7 +258,7 @@ function modifyFormType2() {
 //   // const itemType = dateItem.getType();
 //   const choices = [];
 //   const expTimes = CONFIG.expTime.match(/\d+:\d+/g);
-//   const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //仮予約を記載するカレンダーを取得
+//   const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //仮予約を記載するカレンダーを取得
 //   // この辺から修正 20190531
 //   const allEvents = cal.getEvents(CONFIG.openDate, expDT.to); 
 //   if (CONFIG.itemType == "LIST") {
@@ -319,7 +319,7 @@ function checkAppointment(e) {
     const expDT = getExpDateTime(answersArray);
     // 設定がデフォルトかどうかを判定する
     if (!isDefault()) { // 設定がデフォルトから変更されていればメールを送る
-      const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //仮予約を記載するカレンダーを取得
+      const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //仮予約を記載するカレンダーを取得
       const allEvents = cal.getEvents(expDT.from, expDT.to);
       var trigger = '仮予約';
       var values = ['', '', '', ''];
@@ -581,11 +581,12 @@ function setDefault() {
       ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],
       ['実験開始可能時刻','openTime', 9, '何時から実験できるかを記入してください（24時間表記）'],
       ['実験終了時刻','closeTime', 19,'何時まで実験可能かを記入してください（24時間表記）'],
+      ['参照するカレンダー','workingCalendar', Session.getActiveUser().getEmail(), '利用したいカレンダーのIDをコピペしてください'],
       ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
       ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
       ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
       ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の半角数字列に変更してください。複数指定する場合はカンマで区切ってください。'],
-      ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0'],
+      ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0（この設定は，現在時刻が実験最終日以後になったときにアラートメールが送信されるかどうかを決定しており，1なら送信されます）'],
       ['タイムゾーン設定','expTimeZone','Asia/Tokyo','必要に応じて変更してください。形式は http://joda-time.sourceforge.net/timezones.html を参照してください。'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']
@@ -782,7 +783,7 @@ function setDefault() {
     const memNCol = defaultMember[0].length;
     sheetMember.getRange(1, 1, memNRow, memNCol).setValues(defaultMember);
 
-    sheetConfig.getRange(2, 3, 9, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
+    sheetConfig.getRange(2, 3, 10, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
     sheetConfig.activate();
   } catch(err) {
     const fb = "[line " + err.lineNumber + "] " +err.message;

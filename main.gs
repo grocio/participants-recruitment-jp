@@ -575,7 +575,7 @@ function setDefault() {
     var defaultConfig = [
       ['設定項目','メール本文内でのキー','値','備考'],
       ['実験責任者名','experimenterName','実験太郎', "実験責任者の名前を記入してください"],
-      ['実験責任者のGmailアドレス','experimenterMailAddress', Session.getActiveUser().getEmail(), "実験用のGmailアドレスを記入してください"],
+      ['実験責任者のGmailアドレス','experimenterMailAddress', Session.getActiveUser().getEmail(), "変更する必要はありません。実験用のGmailアドレスが入力されています"],
       ['実験責任者の電話番号','experimenterPhone','xxx-xxx-xxx', "電話番号を記入してください"],
       ['実験の実施場所','experimentRoom','実施場所',"実験の実施場所を記入してください"],
       ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],

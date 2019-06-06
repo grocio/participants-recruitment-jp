@@ -16,6 +16,8 @@ Google Apps Script (エクセルVBAのようなもの)を用いて、Googleの�
 http://qiita.com/her0m31/items/0a67d52179341380dd31)」
 のご説明・コードを大変参考にさせていただきました。
 
+エラー等ありましたら，https://github.com/grocio/participants-recruitment-jp/issues で報告していいただくか，participant.recruit.test`あ`gmail.com までご連絡ください(`あ`は`@`に変更してください)。
+
 ### 何ができるのか？
 
 1. 参加者は、空き時間を確認し、空いている時間帯に心理学実験の仮予約をすることができます。

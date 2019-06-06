@@ -116,7 +116,7 @@ googleフォームを利用して質問フォームを作成します。
 
 - それぞれの質問項目には、設定ボタンから「説明」をクリックすると説明文を加えることができます。注意事項等を記載すると良いと思います。
 - **それぞれの回答を必須の回答にしておくことも忘れないで下さい。**
-- フォームの実用例として、[https://sites.google.com/view/participant-recruit-test/home/free](https://sites.google.com/view/participant-recruit-test/home/free) あるいは [https://sites.google.com/view/participant-recruit-test/home/free](https://sites.google.com/view/participant-recruit-test/home/choice) をご覧ください。
+- フォームの実用例として、[https://sites.google.com/view/participant-recruit-test/home/free](https://sites.google.com/view/participant-recruit-test/home/free) あるいは [https://sites.google.com/view/participant-recruit-test/home/choice](https://sites.google.com/view/participant-recruit-test/home/choice) をご覧ください。
 
 ## 2. フォームの回答が記録されるスプレッドシートの作成
 

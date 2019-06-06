@@ -116,7 +116,7 @@ googleフォームを利用して質問フォームを作成します。
 
 - それぞれの質問項目には、設定ボタンから「説明」をクリックすると説明文を加えることができます。注意事項等を記載すると良いと思います。
 - **それぞれの回答を必須の回答にしておくことも忘れないで下さい。**
-- フォームの実用例として、[https://sites.google.com/view/participant-recruit-test/home/free](https://sites.google.com/view/participant-recruit-test/home/free) あるいは [https://sites.google.com/view/participant-recruit-test/home/choice](https://sites.google.com/view/participant-recruit-test/home/choice) をご覧ください。
+- フォームの実用例として、https://sites.google.com/view/participant-recruit-test/home/free あるいは https://sites.google.com/view/participant-recruit-test/home/choice をご覧ください。
 
 ## 2. フォームの回答が記録されるスプレッドシートの作成
 
@@ -156,7 +156,7 @@ googleカレンダーのページに飛んでください。
 ## 5. google sitesで参加者を募集するためのページを作成して下さい
 
 参加者が実験 (者) の予定を参照しながら応募できるように、カレンダーと応募フォームを配置したgoogle siteを作ります。
-完成例として、https://sites.google.com/site/ishiguroshinri/ あるいは https://sites.google.com/site/snishiyamaexperiment/ をご覧ください。
+完成例として、https://sites.google.com/view/participant-recruit-test/home/free あるいは https://sites.google.com/view/participant-recruit-test/home/choice をご覧ください。
 
 Google ドライブにアクセスし、フォームを作成したときと同様に、左上の新規 -> その他 -> Google サイトの順にクリックしてください。
 

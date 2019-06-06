@@ -17,9 +17,9 @@ Google Apps Script (エクセルVBAのようなもの)を用いて、Googleの�
 http://qiita.com/her0m31/items/0a67d52179341380dd31)」
 のご説明・コードを大変参考にさせていただきました。
 
-エラー等ありましたら，https://github.com/grocio/participants-recruitment-jp/issues で報告していいただくか，participant.recruit.test`あ`gmail.com までご連絡ください(`あ`は`@`に変更してください)。
+エラー等ありましたら，https://github.com/grocio/participants-recruitment-jp/issues （本家）で報告していいただくか，participant.recruit.test`あ`gmail.com までご連絡ください(`あ`は`@`に変更してください)。
 
-また，https://github.com/SNishiyama/participants-recruitment-jp のほうが情報が新しい可能性があります。
+また，https://github.com/SNishiyama/participants-recruitment-jp （分家）のほうが情報が新しい可能性があります（本家で残っているバグがこっちでは修正されていたりするかもしれません）。
 
 ### 何ができるのか？
 

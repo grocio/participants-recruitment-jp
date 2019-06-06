@@ -35,7 +35,7 @@ function zenToHan(str) {
 
 function fmtDate(datetime, pattern) {
   if (is('Date', datetime)) {
-    return Utilities.formatDate(datetime, 'JST', pattern);
+    return Utilities.formatDate(datetime, CONFIG.expTimeZone, pattern);
   }
   return datetime;
 }
@@ -194,7 +194,7 @@ function isFinalizeTrigger(trigger) {
 }
 
 function updateCalendar(oldEventName, newEventName, from, to, trigger) {
-  const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //予約を記載するカレンダーを取得
+  const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //予約を記載するカレンダーを取得
   // まず予約イベントを削除する
   const reserve = cal.getEvents(from, to);
   for (var i = 0; i < reserve.length; i++) {
@@ -224,7 +224,7 @@ function setReminder(from, trigger) {
 }
 
 // 実験期間に合わせてフォームの日にちの選択肢を変える
-function modifyFormItems() {
+function modifyFormType2() {
   const linkedFormURL = SS.getFormUrl();
   const linkedForm = FormApp.openByUrl(linkedFormURL);
   const items = linkedForm.getItems();
@@ -233,18 +233,53 @@ function modifyFormItems() {
   const choices = [];
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
-    var choiceDay = new Date(CONFIG.openDate);
-    choiceDay.setHours(0,0,0,0);
+    var choiceDate = new Date(CONFIG.openDate);
+    var lastDate = new Date(CONFIG.closeDate);
+    choiceDate.setHours(0,0,0,0);
     while (true) {
-      choiceDay.setDate(choiceDay.getDate() + 1);
-      var strChoiceDay = fmtDate(choiceDay, "yyyy/MM/dd");
+      choiceDate.setDate(choiceDate.getDate() + 1);
+      var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
       var newChoice = item.createChoice(strChoiceDay);
       choices.push(newChoice);
-      if (choiceDay >= CONFIG.closeDate) break;
+      if (choiceDate >= lastDate) break;
     }
     item.setChoices(choices);
   }
 }
+
+// サイトが無くてもいいように，選択肢がカレンダーを反映するようにする
+// 設定画面で指定したタイムスロットを，実験実施期間の各日付に結合して選択肢を作るようにはした
+// カレンダーの情報を参照してすでに予定があるところを選択肢から除外できるようにはしていない
+// function modifyFormType3() {
+//   const linkedFormURL = SS.getFormUrl();
+//   const linkedForm = FormApp.openByUrl(linkedFormURL);
+//   const items = linkedForm.getItems();
+//   const dateItem = items[CONFIG.colExpDate - 1];
+//   // const itemType = dateItem.getType();
+//   const choices = [];
+//   const expTimes = CONFIG.expTime.match(/\d+:\d+/g);
+//   const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //仮予約を記載するカレンダーを取得
+//   // この辺から修正 20190531
+//   const allEvents = cal.getEvents(CONFIG.openDate, expDT.to); 
+//   if (CONFIG.itemType == "LIST") {
+//     var item = dateItem.asListItem();
+//   } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
+//     var item = dateItem.asMultipleChoiceItem();
+//   }
+//   var choiceDate = new Date(CONFIG.openDate);
+//   choiceDate.setHours(0,0,0,0);
+//   while (true) {
+//     choiceDate.setDate(choiceDate.getDate() + 1);
+//     for (var i = 0; i < expTimes.length; i++) {
+//       var strChoiceDate = fmtDate(choiceDate, "yyyy/MM/dd");
+//       var choiceDateTime = strChoiceDate + expTimes[i];
+//       var newChoice = item.createChoice(choiceDateTime);
+//       choices.push(newChoice);
+//     }
+//     if (choiceDate >= CONFIG.closeDate) break;
+//   }
+//   item.setChoices(choices);
+// }
 
 function isDefault() {
   const def = {
@@ -284,7 +319,7 @@ function checkAppointment(e) {
     const expDT = getExpDateTime(answersArray);
     // 設定がデフォルトかどうかを判定する
     if (!isDefault()) { // 設定がデフォルトから変更されていればメールを送る
-      const cal = CalendarApp.getCalendarById(CONFIG.experimenterMailAddress); //仮予約を記載するカレンダーを取得
+      const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //仮予約を記載するカレンダーを取得
       const allEvents = cal.getEvents(expDT.from, expDT.to);
       var trigger = '仮予約';
       var values = ['', '', '', ''];
@@ -378,13 +413,13 @@ function sendReminders() {
 // トリガー用の関数
 ///////////////////////////////////////////////////////////////////////////////
 
-function updateTriggers() {
+function updateTriggers(newHour, timeZone) {
   const triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     // sendRemindersのトリガーだけを削除する
     if (triggers[i].getEventType() == ScriptApp.EventType.CLOCK) {
       ScriptApp.deleteTrigger(triggers[i]);
-      ScriptApp.newTrigger('runTimeBased').timeBased().atHour(CONFIG.remindHour).nearMinute(30).everyDays(1).create();
+      ScriptApp.newTrigger('runTimeBased').timeBased().atHour(newHour).nearMinute(30).everyDays(1).inTimezone(timeZone).create();
     }
   }
 }
@@ -434,10 +469,12 @@ function onEdited(e) {
       }
       const sheetCache = SS.getSheetByName('Cache');
       sheetCache.getRange(1,1).setValue(JSON.stringify(cache));
-      // Logger.log(edValues);
       if (edSheetName == '設定') {
-        if (newInfo.remindHour != 19) {
-          updateTriggers();
+        if (newInfo.remindHour != CONFIG.remindHour) {
+          updateTriggers(newInfo.remindHour, newInfo.expTimeZone);
+        } else if (newInfo.expTimeZone != CONFIG.expTimeZone) {
+          SS.setSpreadsheetTimeZone(newInfo.expTimeZone);
+          updateTriggers(newInfo.remindHour, newInfo.expTimeZone);
         }
       }
     }
@@ -451,7 +488,7 @@ function onEdited(e) {
 
 function runTimeBased() {
   sendReminders();
-  if (TYPE == 2) modifyFormItems();
+  if (TYPE == 2) modifyFormType2();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -465,7 +502,7 @@ function setTriggers() {
   }
   ScriptApp.newTrigger('onFormSubmitted').forSpreadsheet(SS).onFormSubmit().create();
   ScriptApp.newTrigger('onEdited').forSpreadsheet(SS).onEdit().create();
-  ScriptApp.newTrigger('runTimeBased').timeBased().atHour(19).nearMinute(30).everyDays(1).create();
+  ScriptApp.newTrigger('runTimeBased').timeBased().atHour(19).nearMinute(30).everyDays(1).inTimezone("Asia/Tokyo").create();
 }
 
 // 設定用のシートおよびその見本を最初に作る関数
@@ -494,6 +531,7 @@ function setting() {
     start = false;
   }
   if (start) {
+    SS.setSpreadsheetTimeZone('Asia/Tokyo');
     setTriggers();
     setDefault();
     msg = "初期設定が終了しました。\\n";
@@ -529,25 +567,27 @@ function setDefault() {
     const lastCol = sheetAnswers.getLastColumn();
     // 設定シート
     const start = new Date();
-    formattedStart = fmtDate(start, 'yyyy/MM/dd');
+    formattedStart = Utilities.formatDate(start, 'Asia/Tokyo','yyyy/MM/dd');
     const end = new Date(start); end.setDate(start.getDate() + 13);
-    formattedEnd = fmtDate(end, 'yyyy/MM/dd');
+    formattedEnd = Utilities.formatDate(end, 'Asia/Tokyo','yyyy/MM/dd');
     const sheetConfig = SS.getSheetByName('設定');
     const note2 = '「フォームの回答」の列番号と一致しているか確認してください（A列が1）';
     var defaultConfig = [
       ['設定項目','メール本文内でのキー','値','備考'],
       ['実験責任者名','experimenterName','実験太郎', "実験責任者の名前を記入してください"],
-      ['実験責任者のGmailアドレス','experimenterMailAddress', Session.getActiveUser().getEmail(), "実験用のGmailアドレスを記入してください"],
+      ['実験責任者のGmailアドレス','experimenterMailAddress', Session.getActiveUser().getEmail(), "変更する必要はありません。実験用のGmailアドレスが入力されています"],
       ['実験責任者の電話番号','experimenterPhone','xxx-xxx-xxx', "電話番号を記入してください"],
       ['実験の実施場所','experimentRoom','実施場所',"実験の実施場所を記入してください"],
       ['実験の所要時間','experimentLength', 60, '実験の所要時間を記入してください。2列目は変更しないでください'],
       ['実験開始可能時刻','openTime', 9, '何時から実験できるかを記入してください（24時間表記）'],
       ['実験終了時刻','closeTime', 19,'何時まで実験可能かを記入してください（24時間表記）'],
+      ['参照するカレンダー','workingCalendar', Session.getActiveUser().getEmail(), '利用したいカレンダーのIDをコピペしてください'],
       ['実験開始日','openDate', formattedStart, '実験を開始する日付を記入してください（年/月/日で表記）'],
       ['実験最終日','closeDate', formattedEnd, '実験の終了予定日を記入してください（年/月/日で表記）'],
       ['リマインダー送信時刻','remindHour', 19, 'リマインダーを送信する時刻を記入してください（24時間表記）。なお指定した時刻から1時間以内に送信されます。'],
       ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の半角数字列に変更してください。複数指定する場合はカンマで区切ってください。'],
-      ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0'],
+      ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0（この設定は，現在時刻が実験最終日以後になったときにアラートメールが送信されるかどうかを決定しており，1なら送信されます）'],
+      ['タイムゾーン設定','expTimeZone','Asia/Tokyo','必要に応じて変更してください。形式は http://joda-time.sourceforge.net/timezones.html を参照してください。'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']
     ];
@@ -743,7 +783,7 @@ function setDefault() {
     const memNCol = defaultMember[0].length;
     sheetMember.getRange(1, 1, memNRow, memNCol).setValues(defaultMember);
 
-    sheetConfig.getRange(2, 3, 9, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
+    sheetConfig.getRange(2, 3, 10, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
     sheetConfig.activate();
   } catch(err) {
     const fb = "[line " + err.lineNumber + "] " +err.message;

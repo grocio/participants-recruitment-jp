@@ -142,10 +142,29 @@ function getExpDateTime(array) {
   return {'from': from, 'to': to};
 }
 
+// https://qiita.com/jz4o/items/d4e978f9085129155ca6 を改変
+function isHoliday(time){
+  //土日か判定
+  var weekInt = time.getDay();
+  if(weekInt <= 0 || 6 <= weekInt){
+    return true;
+  }
+
+  //祝日か判定
+  var calendarId = "ja.japanese#holiday@group.v.calendar.google.com";
+  var calendar = CalendarApp.getCalendarById(calendarId);
+  var todayEvents = calendar.getEventsForDay(time);
+  if(todayEvents.length > 0){
+    return true;
+  }
+
+  return false;
+}
+
 function getMailContents(trigger, time) {
   const template = TEMPLATES[trigger];
   var body = template.bodywd;
-  if (template.changeByDay == 1 && (time.getDay()==0 || time.getDay()==6)) { //もし週末なら
+  if (template.changeByDay == 1 && isHoliday(time)) { //もし週末なら
     body = template.bodywe;
   }
   for (key in CONFIG) { // メールの本文の変数を置換する

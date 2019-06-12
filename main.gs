@@ -252,18 +252,24 @@ function modifyFormType2() {
   const choices = [];
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
-    var choiceDate = new Date(CONFIG.openDate);
-    var lastDate = new Date(CONFIG.closeDate);
-    choiceDate.setHours(0,0,0,0);
-    while (true) {
-      choiceDate.setDate(choiceDate.getDate() + 1);
-      var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
-      var newChoice = item.createChoice(strChoiceDay);
-      choices.push(newChoice);
-      if (choiceDate >= lastDate) break;
-    }
-    item.setChoices(choices);
+  } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
+    var item = dateItem.asMultipleChoiceItem();
+  } else {
+    return;
   }
+  var choiceDate = new Date(CONFIG.openDate);
+  var lastDate = new Date(CONFIG.closeDate);
+  choiceDate.setHours(0,0,0,0);
+  var i = 0;
+  if (new Date() > choiceDate) i++;
+  while (choiceDate < lastDate) {
+    choiceDate.setDate(choiceDate.getDate() + i);
+    var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
+    var newChoice = item.createChoice(strChoiceDay);
+    choices.push(newChoice);
+    i++
+  }
+  item.setChoices(choices);
 }
 
 // サイトが無くてもいいように，選択肢がカレンダーを反映するようにする

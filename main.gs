@@ -253,17 +253,17 @@ function modifyFormType2() {
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
   } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
-    var item = dateItem.asMultipleChoiceItem();
+    var item = secondLastItem.asMultipleChoiceItem();
   } else {
     return;
   }
-  var choiceDate = new Date(CONFIG.openDate);
-  var lastDate = new Date(CONFIG.closeDate);
+  const openDate = new Date(CONFIG.openDate);
+  const lastDate = new Date(CONFIG.closeDate);
+  var choiceDate = new Date(openDate);
   choiceDate.setHours(0,0,0,0);
-  var i = 0;
-  if (new Date() > choiceDate) i++;
+  var i = 0; if (new Date() > choiceDate) i++;
   while (choiceDate < lastDate) {
-    choiceDate.setDate(choiceDate.getDate() + i);
+    choiceDate.setDate(openDate.getDate() + i);
     var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
     var newChoice = item.createChoice(strChoiceDay);
     choices.push(newChoice);

@@ -142,10 +142,29 @@ function getExpDateTime(array) {
   return {'from': from, 'to': to};
 }
 
+// https://qiita.com/jz4o/items/d4e978f9085129155ca6 を改変
+function isHoliday(time){
+  //土日か判定
+  var weekInt = time.getDay();
+  if(weekInt <= 0 || 6 <= weekInt){
+    return true;
+  }
+
+  //祝日か判定
+  var calendarId = "ja.japanese#holiday@group.v.calendar.google.com";
+  var calendar = CalendarApp.getCalendarById(calendarId);
+  var todayEvents = calendar.getEventsForDay(time);
+  if(todayEvents.length > 0){
+    return true;
+  }
+
+  return false;
+}
+
 function getMailContents(trigger, time) {
   const template = TEMPLATES[trigger];
   var body = template.bodywd;
-  if (template.changeByDay == 1 && (time.getDay()==0 || time.getDay()==6)) { //もし週末なら
+  if (template.changeByDay == 1 && isHoliday(time)) { //もし週末なら
     body = template.bodywe;
   }
   for (key in CONFIG) { // メールの本文の変数を置換する
@@ -233,18 +252,24 @@ function modifyFormType2() {
   const choices = [];
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
-    var choiceDate = new Date(CONFIG.openDate);
-    var lastDate = new Date(CONFIG.closeDate);
-    choiceDate.setHours(0,0,0,0);
-    while (true) {
-      choiceDate.setDate(choiceDate.getDate() + 1);
-      var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
-      var newChoice = item.createChoice(strChoiceDay);
-      choices.push(newChoice);
-      if (choiceDate >= lastDate) break;
-    }
-    item.setChoices(choices);
+  } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
+    var item = secondLastItem.asMultipleChoiceItem();
+  } else {
+    return;
   }
+  const openDate = new Date(CONFIG.openDate);
+  const lastDate = new Date(CONFIG.closeDate);
+  var choiceDate = new Date(openDate);
+  choiceDate.setHours(0,0,0,0);
+  var i = 0; if (new Date() > choiceDate) i++;
+  while (choiceDate < lastDate) {
+    choiceDate.setDate(openDate.getDate() + i);
+    var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
+    var newChoice = item.createChoice(strChoiceDay);
+    choices.push(newChoice);
+    i++
+  }
+  item.setChoices(choices);
 }
 
 // サイトが無くてもいいように，選択肢がカレンダーを反映するようにする
@@ -754,7 +779,7 @@ function setDefault() {
     };
 
     const defaultTemplate = [
-      ['トリガー', '土日での変更', '題名', '本文（平日）', '本文（土日）', '備考'],
+      ['トリガー', '土日での変更', '題名', '本文（平日）', '本文（土日祝）', '備考'],
       ['仮予約', 0, '予約の確認', bodies['仮予約'], notUsed, note],
       ['時間外', 0, '実験実施可能時間外です', bodies['時間外'], notUsed, note],
       ['重複', 0, '予約が重複しています', bodies['重複'], notUsed, note],

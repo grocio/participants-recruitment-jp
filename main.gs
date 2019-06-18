@@ -175,9 +175,10 @@ function getMailContents(trigger, time) {
 }
 
 // memberシートからbccアドレスを追加する関数
-function getBccAddresses(charges) {
+function getBccAddresses(charges, selfBcc) {
   charges = zenToHan(charges);
-  const bccArray = [CONFIG.experimenterMailAddress];
+  const bccArray = [];
+  if (selfBcc > 0) bccArray.push(CONFIG.experimenterMailAddress);
   const strCharges = String(charges);
   if (strCharges.length > 0) { // 担当が空欄でなければ
     const chargeIDs = strCharges.match(/\d+/g);
@@ -188,11 +189,12 @@ function getBccAddresses(charges) {
       }
     }
   }
-  return bccArray.join(',');
+  if (bccArray.length > 0) return bccArray.join(',');
+  return "";
 }
 
 // mailの内容を作成する関数
-function sendEmail(name, address, from, to, trigger, chargeID) {
+function sendEmail(name, address, from, to, trigger, chargeID, selfBcc) {
   //メールに記載する、予約日時の変数を作成する
   const yobi = new Array("日", "月", "火", "水", "木", "金", "土")[from.getDay()];
   CONFIG.participantName = name;
@@ -202,8 +204,36 @@ function sendEmail(name, address, from, to, trigger, chargeID) {
   CONFIG.openDate = fmtDate(CONFIG.openDate, 'yyyy/MM/dd');
   CONFIG.closeDate = fmtDate(CONFIG.closeDate, 'yyyy/MM/dd');
   const mail = getMailContents(trigger, from);
-  const bccAddresses = getBccAddresses(chargeID);
-  MailApp.sendEmail(address, mail.title, mail.body, {bcc: bccAddresses});
+  const bccAddresses = getBccAddresses(chargeID, selfBcc);
+  if (bccAddresses.length > 5) MailApp.sendEmail(address, mail.title, mail.body, {bcc: bccAddresses});
+  else MailApp.sendEmail(address, mail.title, mail.body);
+  setRemainingMails();
+}
+
+function setRemainingMails() {
+  const remainingMails = MailApp.getRemainingDailyQuota();
+  const sheetConfig = SS.getSheetByName('設定');
+  const configs = sheetConfig.getDataRange().getValues(); //シート全体のデータを取得。2次元の配列 [行 [列]]
+  for (var i = 0; i < configs.length; i++) {
+    var config = configs[i];
+    if (config[1] == 'remainingMails') {
+      var targetRow = i + 1;
+      break;
+    }
+  }
+  sheetConfig.getRange(targetRow, 3).setValue(remainingMails);
+}
+
+function alertRemainingMails() {
+  const remainingMails = MailApp.getRemainingDailyQuota();
+  const thresholds = [5, 10, 20];
+  const identical = function(value) {return value == remainingMails};
+  if (thresholds.some(identical)) {
+    const title = "自動送信メールの残数が"+ String(remainingMails) + "です。";
+    const message = title + "この24時間以内に送信されるかもしれない予約の確認やリマインダーのメール数を考慮して予約を完了させてください。" +
+                    "自分や分担者にもメールが送信されるようにしている場合は1通あたりに減る数が 2, 3... 大きくなります。";
+    Browser.msgBox(title, message, Browser.Buttons.OK);
+  }
 }
 
 function isFinalizeTrigger(trigger) {
@@ -252,7 +282,7 @@ function modifyFormType2() {
   const choices = [];
   if (itemType == "LIST") {
     var item = secondLastItem.asListItem();
-  } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
+  } else if (itemType == "MULTIPLE_CHOICE") {
     var item = secondLastItem.asMultipleChoiceItem();
   } else {
     return;
@@ -271,40 +301,6 @@ function modifyFormType2() {
   }
   item.setChoices(choices);
 }
-
-// サイトが無くてもいいように，選択肢がカレンダーを反映するようにする
-// 設定画面で指定したタイムスロットを，実験実施期間の各日付に結合して選択肢を作るようにはした
-// カレンダーの情報を参照してすでに予定があるところを選択肢から除外できるようにはしていない
-// function modifyFormType3() {
-//   const linkedFormURL = SS.getFormUrl();
-//   const linkedForm = FormApp.openByUrl(linkedFormURL);
-//   const items = linkedForm.getItems();
-//   const dateItem = items[CONFIG.colExpDate - 1];
-//   // const itemType = dateItem.getType();
-//   const choices = [];
-//   const expTimes = CONFIG.expTime.match(/\d+:\d+/g);
-//   const cal = CalendarApp.getCalendarById(CONFIG.workingCalendar); //仮予約を記載するカレンダーを取得
-//   // この辺から修正 20190531
-//   const allEvents = cal.getEvents(CONFIG.openDate, expDT.to); 
-//   if (CONFIG.itemType == "LIST") {
-//     var item = dateItem.asListItem();
-//   } else if (CONFIG.itemType == "MULTIPLE_CHOICE") {
-//     var item = dateItem.asMultipleChoiceItem();
-//   }
-//   var choiceDate = new Date(CONFIG.openDate);
-//   choiceDate.setHours(0,0,0,0);
-//   while (true) {
-//     choiceDate.setDate(choiceDate.getDate() + 1);
-//     for (var i = 0; i < expTimes.length; i++) {
-//       var strChoiceDate = fmtDate(choiceDate, "yyyy/MM/dd");
-//       var choiceDateTime = strChoiceDate + expTimes[i];
-//       var newChoice = item.createChoice(choiceDateTime);
-//       choices.push(newChoice);
-//     }
-//     if (choiceDate >= CONFIG.closeDate) break;
-//   }
-//   item.setChoices(choices);
-// }
 
 function isDefault() {
   const def = {
@@ -363,7 +359,8 @@ function checkAppointment(e) {
       const sheetAnswers = SHEETS[0];
       const numRow = e.range.getRow();
       const colNumArray = [CONFIG.colStatus, CONFIG.colMailed, CONFIG.colRemindDate, CONFIG.colReminded];
-      sendEmail(participantName, participantEmail, expDT.from, expDT.to, trigger, '');
+      sendEmail(participantName, participantEmail, expDT.from, expDT.to, trigger,
+                '', CONFIG.selfBccTentative);
       // sheetの修正
       sheetAnswers.getRange(numRow, colNumArray[0], 1, colNumArray.length).setValues([values]);
     }
@@ -392,7 +389,9 @@ function finalizeAppointment(array) {
     updateCalendar(oldEventName, newEventName, expDT.from, expDT.to, trigger);
     // メールの送信
     const ParticipantEmail = array[CONFIG.colAddress - 1];
-    sendEmail(participantName, ParticipantEmail, expDT.from, expDT.to, trigger, array[CONFIG.colCharge - 1]);
+    sendEmail(participantName, ParticipantEmail, expDT.from, expDT.to, trigger, 
+              array[CONFIG.colCharge - 1], CONFIG.selfBccFinalize);
+    alertRemainingMails();
     return setReminder(expDT.from, trigger);
   } else {
     const message = "予約ステータスに入力された文字列（トリガー）が「テンプレート」に存在しないため，メールの送信等の処理は行われませんでした。"
@@ -407,6 +406,7 @@ function sendReminders() {
     const sheetAnswers = SHEETS[0];
     const data = sheetAnswers.getDataRange().getValues(); //シート全体のデータを取得。2次元の配列 [行 [列]]
     const time = new Date().getTime(); //現在時刻の取得
+    var tomorrowExps = [];
     // スプレッドシートを1列ずつ参照し、該当する被験者を探していく。
     for (var row = 1; row < data.length; row++) { // 0行目は列名
       //ステータスが送信準備になっていることを確認する
@@ -420,11 +420,32 @@ function sendReminders() {
           //参加者にメールを送る
           var participantEmail = rowVals[CONFIG.colAddress - 1];
           var expDT = getExpDateTime(rowVals);
-          sendEmail(participantName, participantEmail, expDT.from, expDT.to, 'リマインダー', rowVals[CONFIG.colCharge - 1])
+          sendEmail(participantName, participantEmail, expDT.from, expDT.to, 'リマインダー',
+                    rowVals[CONFIG.colCharge - 1], CONFIG.selfBccReminder);
           sheetAnswers.getRange(row + 1, CONFIG.colReminded).setValue("送信済み"); // シートの修正
           console.log('Success!');
+          var expInfo = {name: participantName, from: expDT.from, to: expDT.to};
+          tomorrowExps.push(expInfo);
         }
       }
+    }
+    // 実験者用のメールを作成して翌日の実験時間を知らせる
+    if (tomorrowExps.length > 0 && CONFIG.sendTmrwExps > 0) {
+      var allBodies = [];
+      tomorrow = fmtDate(tomorrowExps[0].from, 'MM/dd');
+      tomorrowExps.sort(function(a, b) {
+        return a.from < b.from ? -1 : 1; // 3項演算子
+      });
+      for (var indiv = 0; indiv < tomorrowExps.length; indiv++) {
+        var indivInfo = tomorrowExps[indiv];
+        var strFrom = fmtDate(indivInfo.from, 'HH:mm');
+        var strTo = fmtDate(indivInfo.to, 'HH:mm');
+        var indivBody = strFrom + " - " + strTo + "  " + indivInfo.name;
+        allBodies.push(indivBody);
+      }
+      var joinedBody = allBodies.join("\n");
+      var reminderTitle = "明日（" + tomorrow + "）の実験予定";
+      MailApp.sendEmail(CONFIG.experimenterMailAddress, reminderTitle, joinedBody);
     }
   } catch (err) {
     //実行に失敗した時に通知
@@ -613,6 +634,11 @@ function setDefault() {
       ['予約を完了させるトリガー','finalizeTrigger',111,'必要に応じて任意の半角数字列に変更してください。複数指定する場合はカンマで区切ってください。'],
       ['実験中かどうか','nowExperimenting',1,'実験中であれば1, そうでなければ0（この設定は，現在時刻が実験最終日以後になったときにアラートメールが送信されるかどうかを決定しており，1なら送信されます）'],
       ['タイムゾーン設定','expTimeZone','Asia/Tokyo','必要に応じて変更してください。形式は http://joda-time.sourceforge.net/timezones.html を参照してください。'],
+      ['自動送信メール残数','remainingMails',MailApp.getRemainingDailyQuota(),'自動で送信できるメールの残数の目安です。「担当」機能を使っていると一気に2減ったりします。1日経つと100に近い値に戻ります。'],
+      ['予約確認メールを自分にも送るか','selfBccTentative',1,'自分にも予約確認メールを送る場合は1を，送らない場合は0を入力してください。送らない場合は自動送信できる総メール数が増えます（以下同様）。'],
+      ['予約完了メールを自分にも送るか','selfBccFinalize',0,'自分にも予約完了メールを送る場合は1を，送らない場合は0を入力してください。'],
+      ['リマインダーを自分にも送るか','selfBccReminder',0,'自分にも参加者と同様のリマインダーを送る場合は1を，送らない場合は0を入力してください。'],
+      ['翌日の実験予定を送るか','sendTmrwExps',1,'翌日の実験予定の一覧を自分にメールする場合は1を，しない場合は0を入力してください。'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']
     ];

@@ -81,22 +81,28 @@ function getSetting() {
     var settingObj = JSON.parse(cacheJson);
     // parseしたままだと以下の2つがstringのままで機能しない
     settingObj.config.openDate = new Date(settingObj.config.openDate);
-    if (settingObj.config.openDate < new Date()) {
-      settingObj.config.openDate = new Date();
-    }
     settingObj.config.closeDate = new Date(settingObj.config.closeDate);
-    if (settingObj.config.closeDate < new Date()) {
-      const configTemp = getInfo("設定");
-      if (configTemp.nowExperimenting == 1) {
-        const title = "実験実施期間を修正してください";
-        const SSName = SS.getName();
-        const text = "以下のファイルの実験実施期間が過去になっています。早急に修正してください。\nファイル名: " + SSName +
-                    "\n\nこの通知を切る場合は「設定」シートのnowExperimentingの行を0にしてください";
-        console.log(text);
-        MailApp.sendEmail(settingObj.config.experimenterMailAddress, title, text);
-      }
+  }
+  // 実験開始日・終了日の調整
+  settingObj.config.outOfDate = false;
+  if (settingObj.config.openDate < new Date()) {
+    settingObj.config.openDate = new Date();
+  }
+  if (settingObj.config.closeDate < new Date()) {
+    settingObj.config.outOfDate = true;
+    const configTemp = getInfo("設定");
+    if (configTemp.nowExperimenting == 1) {
+      const title = "実験実施期間を修正してください";
+      const SSName = SS.getName();
+      const text = "以下のファイルの実験実施期間が過去になっています。早急に修正してください。\nファイル名: " + SSName +
+                  "\n\nこの通知を切る場合は「設定」シートのnowExperimentingの行を0にしてください";
+      console.log(text);
+      MailApp.sendEmail(settingObj.config.experimenterMailAddress, title, text);
     }
   }
+  // 実験開始日・終了日の日時の設定
+  settingObj.config.openDate.setHours(settingObj.config.openTime, 0, 0);
+  settingObj.config.closeDate.setHours(settingObj.config.closeTime, 0, 0);
   return settingObj;
 }
 
@@ -276,6 +282,15 @@ function setReminder(from, trigger) {
 function modifyFormType2() {
   const linkedFormURL = SS.getFormUrl();
   const linkedForm = FormApp.openByUrl(linkedFormURL);
+  // 実行日がcloseDateを過ぎていたら以下を実行しない
+  if (CONFIG.outOfDate) {
+    // 実験中でなければ受付を終了させようと思ったが，
+    // どうせなら同じことをtype1でもできるようにしようと思った
+    // if (CONFIG.nowExperimenting <= 0) {
+    //   linkedForm.setAcceptingResponses(false);
+    // }
+    return;
+  }
   const items = linkedForm.getItems();
   const secondLastItem = items[CONFIG.colExpDate - 2];
   const itemType = secondLastItem.getType();
@@ -288,9 +303,10 @@ function modifyFormType2() {
     return;
   }
   const openDate = new Date(CONFIG.openDate);
-  const lastDate = new Date(CONFIG.closeDate);
+  var lastDate = new Date(CONFIG.closeDate);
   var choiceDate = new Date(openDate);
   choiceDate.setHours(0,0,0,0);
+  lastDate.setHours(0,0,0,0);
   var i = 0; if (new Date() > choiceDate) i++;
   while (choiceDate < lastDate) {
     choiceDate.setDate(openDate.getDate() + i);

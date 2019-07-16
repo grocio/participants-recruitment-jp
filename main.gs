@@ -40,6 +40,19 @@ function fmtDate(datetime, pattern) {
   return datetime;
 }
 
+// 2次元配列のある列にある値が入っている行番号をとってくる関数
+function getRowIDContainTarget(arr2D, col, target) {
+  var targetRow = undefined;
+  for (var i = 0; i < arr2D.length; i++) {
+    var arr = arr2D[i];
+    if (arr[col] == target) {
+      targetRow = i + 1; // getRangeで使うことを想定しているので，+1する
+      break;
+    }
+  }
+  return targetRow;
+}
+
 function getInfo(sheetName) {
   const sheetInfo = SS.getSheetByName(sheetName);
   const infoArray = sheetInfo.getDataRange().getValues();
@@ -113,36 +126,52 @@ function getSetting() {
 
 // 希望日時を取得しdate型に変換する関数
 function getExpDateTime(array) {
+  const expLength = CONFIG.experimentLength;
   if (TYPE == 1) {
     var from = new Date(array[CONFIG.colExpDate - 1]);
     var to = new Date(from);
-    var expLength = CONFIG.experimentLength;
     to.setMinutes(from.getMinutes() + expLength);
-  } else {
-    // 日付の操作
-    var from = new Date();
+  } else { // TYPE == 2 なら
+    // 希望日の処理
     var date = array[CONFIG.colExpDate - 1];
-    date = zenToHan(date);
-    var dateInfo = date.match(/\d+/g);
-    if (dateInfo.length == 3) { //年月日なら
-      from.setFullYear(dateInfo[0], dateInfo[1] - 1, dateInfo[2]);
-    } else if (dateInfo.length == 2) { //月日なら
-      from.setMonth(dateInfo[0] - 1, dateInfo[1]);
-    } else if (dateInfo.length == 1) { //日なら
-      from.setDate(dateInfo[0]);
+    if (is("String", date)) {
+      date = zenToHan(date);
+      var from = new Date();
+      var dateInfo = date.match(/\d+/g);
+      if (dateInfo.length == 3) { //年月日なら
+        from.setFullYear(dateInfo[0], dateInfo[1] - 1, dateInfo[2]);
+      } else if (dateInfo.length == 2) { //月日なら
+        from.setMonth(dateInfo[0] - 1, dateInfo[1]);
+      } else if (dateInfo.length == 1) { //日なら
+        from.setDate(dateInfo[0]);
+      }
+    } else if (is("Date", date)) {
+      var from = new Date(date);
+    } else {
+      throw new Error("希望日はString型かDate型にしてください");
     }
     from.setSeconds(0,0);
+
+    // 希望時間の処理
     var to = new Date(from);
-    // 時間の操作
-    var time = array[CONFIG.colExpTime - 1]; // この段階では文字列
-    time = zenToHan(time);
-    var FromTo = time.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
-    from.setHours(FromTo[0],FromTo[1]);
-    if (FromTo.length == 4) {
-      to.setHours(FromTo[2],FromTo[3]);
-    } else if (FromTo.length == 2) {
-      var expLength = CONFIG.experimentLength;
+    var time = array[CONFIG.colExpTime - 1];
+    if (is("String", time)) {
+      time = zenToHan(time);
+      var FromTo = time.match(/\d+/g); //空白を除去し，~で分けて要素２の配列に
+      from.setHours(FromTo[0],FromTo[1]);
+      if (FromTo.length == 4) { // timeが hh:mm-hh:mm 形式なら
+        to.setHours(FromTo[2],FromTo[3]); 
+      } else if (FromTo.length == 2) { // timeが hh:mm 形式なら
+        to.setMinutes(from.getMinutes() + expLength);
+      } else {
+        throw new Error("希望時間の形式は'hh:mm-hh:mm'(開始時刻と終了時刻の両方を含める)か'hh:mm'(開始時刻のみ)にしてください");
+      }
+    } else if (is("Date", time)) {
+      from.setHours(time.getHours(), time.getMinutes());
+      to = new Date(from);
       to.setMinutes(from.getMinutes() + expLength);
+    } else {
+      throw new Error("希望時間はString型かDate型にしてください");
     }
   }
   return {'from': from, 'to': to};
@@ -220,13 +249,7 @@ function setRemainingMails() {
   const remainingMails = MailApp.getRemainingDailyQuota();
   const sheetConfig = SS.getSheetByName('設定');
   const configs = sheetConfig.getDataRange().getValues(); //シート全体のデータを取得。2次元の配列 [行 [列]]
-  for (var i = 0; i < configs.length; i++) {
-    var config = configs[i];
-    if (config[1] == 'remainingMails') {
-      var targetRow = i + 1;
-      break;
-    }
-  }
+  const targetRow = getRowIDContainTarget(configs, 1, 'remainingMails');
   sheetConfig.getRange(targetRow, 3).setValue(remainingMails);
 }
 
@@ -486,7 +509,15 @@ function updateTriggers(newHour, timeZone) {
   }
 }
 
+function onOpening() {
+  if (SHEETS.length > 1) {
+    setRemainingMails();
+    alertRemainingMails();
+  }
+}
+
 function onFormSubmitted(e) {
+  if (CONFIG.useFormSystem != 1) return; //systemを利用しないなら以降の処理を行わない
   // 実際の回答に続けて値のない回答が送られることがあるので以下のif文で回避
   if (e.values[CONFIG.colAddress - 1].length > 0) {
     checkAppointment(e);
@@ -526,7 +557,7 @@ function onEdited(e) {
         if (name == edSheetName) {
           cache[key] = newInfo;
         } else {
-        cache[key] = SETTING[key];
+          cache[key] = SETTING[key];
         }
       }
       const sheetCache = SS.getSheetByName('Cache');
@@ -550,7 +581,7 @@ function onEdited(e) {
 
 function runTimeBased() {
   sendReminders();
-  if (TYPE == 2) modifyFormType2();
+  if (TYPE == 2 && CONFIG.useFormSystem == 1) modifyFormType2();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -562,6 +593,7 @@ function setTriggers() {
   for (var i = 0; i < triggers.length; i++) {
     ScriptApp.deleteTrigger(triggers[i]);
   }
+  ScriptApp.newTrigger('onOpening').forSpreadsheet(SS).onOpen().create();
   ScriptApp.newTrigger('onFormSubmitted').forSpreadsheet(SS).onFormSubmit().create();
   ScriptApp.newTrigger('onEdited').forSpreadsheet(SS).onEdit().create();
   ScriptApp.newTrigger('runTimeBased').timeBased().atHour(19).nearMinute(30).everyDays(1).inTimezone("Asia/Tokyo").create();
@@ -655,6 +687,7 @@ function setDefault() {
       ['予約完了メールを自分にも送るか','selfBccFinalize',0,'自分にも予約完了メールを送る場合は1を，送らない場合は0を入力してください。'],
       ['リマインダーを自分にも送るか','selfBccReminder',0,'自分にも参加者と同様のリマインダーを送る場合は1を，送らない場合は0を入力してください。'],
       ['翌日の実験予定を送るか','sendTmrwExps',1,'翌日の実験予定の一覧を自分にメールする場合は1を，しない場合は0を入力してください。'],
+      ['フォーム周りの関数を使用するか','useFormSystem',1,'ここを0にすると，formに関わる関数が動作しなくなります。この項目はスプレッドシートだけからメールの自動送信システムだけを使用したい人を想定しています'],
       ['参加者名の列番号','colParName', 2, note2],
       ['ふりがなの列番号','colParNameKana', -1, note2 + 'もし利用しない場合は-1を入力してください。']
     ];
@@ -684,10 +717,17 @@ function setDefault() {
       defaultConfig = defaultConfig.concat(verChoice).concat(otherColConfig);
     }
 
+    // 値の設定
     const configNRow = defaultConfig.length;
     const configNCol = defaultConfig[0].length;
     sheetConfig.getRange(1, 1, configNRow, configNCol).setValues(defaultConfig);
-
+    // 書式の設定
+    rowRemainingMails = getRowIDContainTarget(defaultConfig, 1, 'remainingMails');
+    sheetConfig.getRange(rowRemainingMails, 3).setFontColor('#FF0000');
+    sheetConfig.getRange(2, 2, configNRow - 1, 1).setFontColor("#C8C8C8");
+    sheetConfig.setColumnWidth(1, 202);
+    sheetConfig.autoResizeColumn(3);
+    sheetConfig.getRange(2, 3, 10, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
 
     // メールのテンプレート用シート
     const sheetTemplate = SS.getSheetByName('テンプレート');
@@ -821,7 +861,7 @@ function setDefault() {
     };
 
     const defaultTemplate = [
-      ['トリガー', '土日での変更', '題名', '本文（平日）', '本文（土日祝）', '備考'],
+      ['トリガー', '休日での変更', '題名', '本文（平日）', '本文（土日祝）', '備考'],
       ['仮予約', 0, '予約の確認', bodies['仮予約'], notUsed, note],
       ['時間外', 0, '実験実施可能時間外です', bodies['時間外'], notUsed, note],
       ['重複', 0, '予約が重複しています', bodies['重複'], notUsed, note],
@@ -832,8 +872,20 @@ function setDefault() {
     ];
     const tempNRow = defaultTemplate.length;
     const tempNCol = defaultTemplate[0].length;
-    sheetTemplate.getRange(1, 1, tempNRow, tempNCol).setValues(defaultTemplate);
+    var tempAllArea = sheetTemplate.getRange(1, 1, tempNRow, tempNCol);
+    tempAllArea.setValues(defaultTemplate);
+    // 体裁を整える
+    tempAllArea.setVerticalAlignment("top");
+    sheetTemplate.setColumnWidth(4, 500);
+    sheetTemplate.setColumnWidth(5, 500);
+    var defaultWraps = [];
+    for (var i = 0; i < tempNRow; i++) {
+      defaultWraps.push([false,false,true,true,true,false]);
+    }
+    tempAllArea.setWraps(defaultWraps);
 
+
+    // メンバーシートの設定
     const sheetMember = SS.getSheetByName('メンバー');
     const sh1Name = sheetAnswers.getName();
     const sh1LastCol = sheetAnswers.getLastColumn();
@@ -850,8 +902,7 @@ function setDefault() {
     const memNCol = defaultMember[0].length;
     sheetMember.getRange(1, 1, memNRow, memNCol).setValues(defaultMember);
 
-    sheetConfig.getRange(2, 3, 10, 1).setBorder(true, true, true, true, false, false, "black", SpreadsheetApp.BorderStyle.SOLID_THICK);
-    sheetConfig.activate();
+    sheetConfig.activate(); // 設定画面を開く
   } catch(err) {
     const fb = "[line " + err.lineNumber + "] " +err.message;
     Logger.log(fb);

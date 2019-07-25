@@ -540,7 +540,11 @@ function onEdited(e) {
         for (var i = 0; i < edValues.length; i++) {
           var edRowNum = edFirstRowNum + i;
           var edRowVals = answersArray[edRowNum - 1];
-          if (edRowVals[CONFIG.colMailed - 1] !== 1) {
+          if (edRowNum > answersArray.length) {
+            return; // 一番最後の行の値を削除した場合は処理しない
+          } if (edRowVals[CONFIG.colAddress - 1].length < 5) {
+            return; // データのない行の値を編集した場合は処理しない
+          } else if (edRowVals[CONFIG.colMailed - 1] !== 1) {
             var values = finalizeAppointment(edRowVals);
             var colNumArray = [CONFIG.colMailed, CONFIG.colRemindDate, CONFIG.colReminded];
             edSheet.getRange(edRowNum, colNumArray[0], 1, colNumArray.length).setValues([values]);

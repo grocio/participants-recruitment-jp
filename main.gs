@@ -35,6 +35,10 @@ function zenToHan(str) {
 
 function fmtDate(datetime, pattern) {
   if (is('Date', datetime)) {
+    if (/yobi/.test(pattern)) {
+      var yobi = new Array("日", "月", "火", "水", "木", "金", "土")[datetime.getDay()]
+      pattern = pattern.replace(/yobi/, yobi)
+    }
     return Utilities.formatDate(datetime, CONFIG.expTimeZone, pattern);
   }
   return datetime;
@@ -231,9 +235,8 @@ function getBccAddresses(charges, selfBcc) {
 // mailの内容を作成する関数
 function sendEmail(name, address, from, to, trigger, chargeID, selfBcc) {
   //メールに記載する、予約日時の変数を作成する
-  const yobi = new Array("日", "月", "火", "水", "木", "金", "土")[from.getDay()];
   CONFIG.participantName = name;
-  CONFIG.expDate = fmtDate(from, 'MM/dd') + "（"+ yobi +"）";
+  CONFIG.expDate = fmtDate(from, 'MM/dd（yobi）');
   CONFIG.fromWhen = fmtDate(from, 'HH:mm');
   CONFIG.toWhen = fmtDate(to, 'HH:mm');
   CONFIG.openDate = fmtDate(CONFIG.openDate, 'yyyy/MM/dd');
@@ -330,13 +333,12 @@ function modifyFormType2() {
   var choiceDate = new Date(openDate);
   choiceDate.setHours(0,0,0,0);
   lastDate.setHours(0,0,0,0);
-  var i = 0; if (new Date() > choiceDate) i++;
+  if (new Date() > choiceDate) choiceDate.setDate(choiceDate.getDate() + 1);
   while (choiceDate < lastDate) {
-    choiceDate.setDate(openDate.getDate() + i);
     var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
     var newChoice = item.createChoice(strChoiceDay);
     choices.push(newChoice);
-    i++
+    choiceDate.setDate(choiceDate.getDate() + 1);
   }
   item.setChoices(choices);
 }

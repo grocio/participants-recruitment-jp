@@ -334,7 +334,7 @@ function modifyFormType2() {
   choiceDate.setHours(0,0,0,0);
   lastDate.setHours(0,0,0,0);
   if (new Date() > choiceDate) choiceDate.setDate(choiceDate.getDate() + 1);
-  while (choiceDate < lastDate) {
+  while (choiceDate <= lastDate) {
     var strChoiceDay = fmtDate(choiceDate, "yyyy/MM/dd");
     var newChoice = item.createChoice(strChoiceDay);
     choices.push(newChoice);
